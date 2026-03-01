@@ -1,0 +1,158 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Light Mode: Trust-building fintech colors */
+  /* Primary: Deep Blue (Trust, Security) */
+  --primary: 227 90% 30%;
+  --primary-foreground: 0 0% 100%;
+  
+  /* Accent: Emerald Green (Growth, Prosperity) */
+  --accent: 150 65% 40%;
+  --accent-foreground: 0 0% 100%;
+  
+  /* Neutrals */
+  --background: 0 0% 98%;
+  --foreground: 0 0% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 12%;
+  
+  /* Secondary: Warm Orange (Reliability) */
+  --secondary: 33 95% 45%;
+  --secondary-foreground: 0 0% 100%;
+  
+  /* Muted colors */
+  --muted: 0 0% 92%;
+  --muted-foreground: 0 0% 45%;
+  
+  /* UI elements */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 88%;
+  --input: 0 0% 95%;
+  --ring: 227 90% 45%;
+  
+  /* Chart colors for data visualization */
+  --chart-1: 227 90% 40%;
+  --chart-2: 150 65% 45%;
+  --chart-3: 33 95% 50%;
+  --chart-4: 14 89% 55%;
+  --chart-5: 262 85% 50%;
+  
+  /* Sidebar theming */
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 0 0% 12%;
+  --sidebar-primary: 227 90% 30%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 150 65% 40%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 0 0% 88%;
+  --sidebar-ring: 227 90% 45%;
+  
+  --radius: 0.625rem;
+}
+
+.dark {
+  /* Dark Mode: Professional, eye-friendly for long hours */
+  /* Primary: Bright Blue for better contrast */
+  --primary: 220 95% 65%;
+  --primary-foreground: 220 20% 10%;
+  
+  /* Accent: Bright Emerald */
+  --accent: 150 75% 55%;
+  --accent-foreground: 0 0% 8%;
+  
+  /* Neutrals: Dark backgrounds */
+  --background: 220 25% 10%;
+  --foreground: 0 0% 95%;
+  --card: 220 20% 15%;
+  --card-foreground: 0 0% 95%;
+  --popover: 220 20% 15%;
+  --popover-foreground: 0 0% 95%;
+  
+  /* Secondary: Warm orange stays visible */
+  --secondary: 33 95% 55%;
+  --secondary-foreground: 220 20% 10%;
+  
+  /* Muted colors */
+  --muted: 220 20% 35%;
+  --muted-foreground: 0 0% 70%;
+  
+  /* UI elements */
+  --destructive: 0 84% 65%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 20% 28%;
+  --input: 220 20% 20%;
+  --ring: 220 95% 60%;
+  
+  /* Chart colors adjusted for dark backgrounds */
+  --chart-1: 220 95% 65%;
+  --chart-2: 150 75% 55%;
+  --chart-3: 33 95% 60%;
+  --chart-4: 14 89% 60%;
+  --chart-5: 262 85% 60%;
+  
+  /* Sidebar theming for dark */
+  --sidebar: 220 20% 12%;
+  --sidebar-foreground: 0 0% 95%;
+  --sidebar-primary: 220 95% 65%;
+  --sidebar-primary-foreground: 220 20% 10%;
+  --sidebar-accent: 150 75% 55%;
+  --sidebar-accent-foreground: 0 0% 8%;
+  --sidebar-border: 220 20% 28%;
+  --sidebar-ring: 220 95% 60%;
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback';
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
