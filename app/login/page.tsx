@@ -5,6 +5,7 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -31,12 +32,14 @@ export default function LoginPage() {
     }
 
     try {
-      await login({ email, password, tenantId: tenantId || 'default' });
+      await login({ email, password, tenantId: tenantId || undefined });
       toast({
         title: 'Success',
         description: 'Logged in successfully',
       });
-      router.push('/dashboard');
+      // Superadmin (platform admin) -> tenant management; others -> dashboard
+      const u = JSON.parse(localStorage.getItem('sahayog-user') || '{}');
+      router.push(u.role === 'PLATFORM_ADMIN' ? '/admin/tenants' : '/dashboard');
     } catch (error) {
       toast({
         title: 'Login Failed',
@@ -84,9 +87,8 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -103,18 +105,28 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            Don't have an account?{' '}
-            <Link href="/signup" className="text-primary hover:underline">
-              Sign up
-            </Link>
+          <div className="mt-6 text-center text-sm text-muted-foreground flex flex-col gap-2">
+            <div>
+              Don't have an account?{' '}
+              <Link href="/register" className="text-primary hover:underline font-medium">
+                Register Your Society
+              </Link>
+            </div>
+
+            <div className="pt-2 border-t border-border mt-2">
+              Are you a society member?{' '}
+              <Link href="/member-portal/login" className="text-primary hover:underline font-medium">
+                Member Login
+              </Link>
+            </div>
           </div>
 
           {/* Demo credentials */}
           <div className="mt-6 p-3 bg-muted rounded-lg text-sm">
             <p className="font-semibold mb-2 text-foreground">Demo Credentials:</p>
-            <p className="text-muted-foreground">Email: demo@example.com</p>
-            <p className="text-muted-foreground">Password: any password</p>
+            <p className="text-muted-foreground">Superadmin: sdsiteadmin@sentientdigital.in</p>
+            <p className="text-muted-foreground">Admin: admin@sentientdigital.in</p>
+            <p className="text-muted-foreground">Password: Sentient1234@</p>
           </div>
         </CardContent>
       </Card>

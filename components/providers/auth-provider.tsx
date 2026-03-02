@@ -2,6 +2,14 @@
 
 import React, { createContext, useContext, useCallback, useEffect, useState } from 'react';
 import { User, LoginCredentials, SignupData, Permission, UserRole, ROLE_PERMISSIONS } from '@/lib/types/auth';
+import { authApi, setApiToken } from '@/lib/api';
+
+// Backend roles -> frontend UserRole
+const ROLE_MAP: Record<string, UserRole> = {
+  superadmin: UserRole.PLATFORM_ADMIN,
+  admin: UserRole.SOCIETY_ADMIN,
+  staff: UserRole.ACCOUNTANT,
+};
 
 interface AuthContextType {
   user: User | null;
@@ -10,6 +18,7 @@ interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
   logout: () => Promise<void>;
+  impersonate: (tenantId: string) => Promise<void>;
   hasPermission: (permission: Permission) => boolean;
   hasRole: (role: UserRole | UserRole[]) => boolean;
   setupMFA: (method: 'TOTP' | 'SMS') => Promise<string>;
@@ -17,6 +26,21 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+function mapApiUserToUser(apiUser: { id: string; email: string; name: string; role: string; tenantId: string | null }): User {
+  const role = ROLE_MAP[apiUser.role] || UserRole.SOCIETY_ADMIN;
+  return {
+    id: apiUser.id,
+    email: apiUser.email,
+    name: apiUser.name,
+    role,
+    tenantId: apiUser.tenantId || '',
+    permissions: ROLE_PERMISSIONS[role],
+    mfaEnabled: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -27,12 +51,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Try to restore session from localStorage or API
         const storedUser = localStorage.getItem('sahayog-user');
         const storedToken = localStorage.getItem('sahayog-token');
-
         if (storedUser && storedToken) {
           setUser(JSON.parse(storedUser));
+          setApiToken(storedToken);
         }
       } catch (error) {
         console.error('Failed to initialize auth:', error);
@@ -43,30 +66,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setMounted(true);
       }
     };
-
     initializeAuth();
   }, []);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // For now, creating a mock user for demo purposes
-      const mockUser: User = {
-        id: '1',
+      const res = await authApi.login({
         email: credentials.email,
-        name: credentials.email.split('@')[0],
-        role: UserRole.SOCIETY_ADMIN,
-        tenantId: credentials.tenantId || 'default',
-        permissions: ROLE_PERMISSIONS[UserRole.SOCIETY_ADMIN],
-        mfaEnabled: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      localStorage.setItem('sahayog-user', JSON.stringify(mockUser));
-      localStorage.setItem('sahayog-token', 'mock-token-' + Date.now());
-      setUser(mockUser);
+        password: credentials.password,
+        tenantId: credentials.tenantId,
+      });
+      if (!res.success || !res.token || !res.user) throw new Error('Invalid response');
+      const u = mapApiUserToUser(res.user);
+      setApiToken(res.token);
+      localStorage.setItem('sahayog-user', JSON.stringify(u));
+      localStorage.setItem('sahayog-token', res.token);
+      setUser(u);
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Login failed');
     } finally {
@@ -77,22 +93,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = useCallback(async (data: SignupData) => {
     setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      const mockUser: User = {
-        id: Date.now().toString(),
+      await authApi.register({
         email: data.email,
+        password: data.password,
         name: data.name,
-        role: UserRole.MEMBER,
-        tenantId: data.tenantId || 'default',
-        permissions: ROLE_PERMISSIONS[UserRole.MEMBER],
-        mfaEnabled: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      localStorage.setItem('sahayog-user', JSON.stringify(mockUser));
-      localStorage.setItem('sahayog-token', 'mock-token-' + Date.now());
-      setUser(mockUser);
+        role: 'staff',
+        tenantId: data.tenantId,
+      });
+      const loginRes = await authApi.login({ email: data.email, password: data.password, tenantId: data.tenantId });
+      if (!loginRes.success || !loginRes.token || !loginRes.user) throw new Error('Login after signup failed');
+      const u = mapApiUserToUser(loginRes.user);
+      setApiToken(loginRes.token);
+      localStorage.setItem('sahayog-user', JSON.stringify(u));
+      localStorage.setItem('sahayog-token', loginRes.token);
+      setUser(u);
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Signup failed');
     } finally {
@@ -100,8 +114,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const impersonate = useCallback(async (tenantId: string) => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('sahayog-token');
+      const res = await authApi.impersonate(tenantId, token || undefined);
+      if (!res.success || !res.token || !res.user) throw new Error('Impersonation failed');
+      const u = mapApiUserToUser(res.user);
+      setApiToken(res.token);
+      localStorage.setItem('sahayog-user', JSON.stringify(u));
+      localStorage.setItem('sahayog-token', res.token);
+      setUser(u);
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Impersonation failed');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     try {
+      setApiToken(null);
       localStorage.removeItem('sahayog-user');
       localStorage.removeItem('sahayog-token');
       setUser(null);
@@ -148,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         signup,
         logout,
+        impersonate,
         hasPermission,
         hasRole,
         setupMFA,

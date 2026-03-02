@@ -1,0 +1,14 @@
+{
+  "common": {
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "submit": "जमा करें",
+    "loading": "लोड हो रहा है..."
+  },
+  "nav": {
+    "dashboard": "डैशबोर्ड",
+    "members": "सदस्य",
+    "loans": "ऋण",
+    "accounts": "खाते"
+  }
+}

@@ -1,37 +1,51 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { CashFlowForecast } from '@/lib/types/ai'
 import { formatCurrency } from '@/lib/utils/format'
-import { TrendingUp, TrendingDown } from 'lucide-react'
-
-const mockForecastData: CashFlowForecast[] = [
-  { date: new Date('2025-03-01'), optimistic: 4200000, base: 3800000, pessimistic: 3200000, confidence: 92 },
-  { date: new Date('2025-03-08'), optimistic: 4500000, base: 4000000, pessimistic: 3400000, confidence: 90 },
-  { date: new Date('2025-03-15'), optimistic: 5200000, base: 4600000, pessimistic: 3800000, confidence: 88 },
-  { date: new Date('2025-03-22'), optimistic: 4800000, base: 4200000, pessimistic: 3500000, confidence: 85 },
-  { date: new Date('2025-03-29'), optimistic: 5500000, base: 4900000, pessimistic: 4100000, confidence: 83 },
-]
+import { TrendingUp, TrendingDown, Loader2 } from 'lucide-react'
+import { cashFlowApi } from '@/lib/api'
 
 export default function CashFlowForecastPage() {
   const [period, setPeriod] = useState<30 | 60 | 90>(30)
+  const [loading, setLoading] = useState(true)
+  const [forecast, setForecast] = useState<{ date: string; optimistic: number; base: number; pessimistic: number; confidence: number }[]>([])
+  const [kpis, setKpis] = useState<{ projectedInflow: number; projectedOutflow: number; netPosition: number; liquidityRatio: number } | null>(null)
+  const [aiInsights, setAiInsights] = useState<string[]>([])
 
-  const chartData = mockForecastData.map((d) => ({
-    date: d.date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
+  useEffect(() => {
+    const fetchCashFlow = async () => {
+      try {
+        setLoading(true)
+        const res = await cashFlowApi.get(period)
+        if (res.success) {
+          setForecast(res.forecast || [])
+          setKpis(res.kpis || null)
+          setAiInsights(res.aiInsights || [])
+        }
+      } catch (e) {
+        console.error('Failed to fetch cash flow', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchCashFlow()
+  }, [period])
+
+  const chartData = forecast.map((d) => ({
+    date: new Date(d.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
     'Optimistic (Green)': d.optimistic,
     'Base (Blue)': d.base,
     'Pessimistic (Red)': d.pessimistic,
   }))
 
-  const latestBase = mockForecastData[mockForecastData.length - 1].base
-  const projectedInflow = latestBase * 1.2
-  const projectedOutflow = latestBase * 0.8
-  const netPosition = projectedInflow - projectedOutflow
-  const liquidityRatio = projectedInflow / projectedOutflow
+  const projectedInflow = kpis?.projectedInflow ?? 0
+  const projectedOutflow = kpis?.projectedOutflow ?? 0
+  const netPosition = kpis?.netPosition ?? 0
+  const liquidityRatio = kpis?.liquidityRatio ?? 1
 
   return (
     <div className="space-y-6">
@@ -45,12 +59,13 @@ export default function CashFlowForecastPage() {
 
       {/* Period Selector */}
       <div className="flex gap-2">
-        {[30, 60, 90].map((p) => (
+        {([30, 60, 90] as const).map((p) => (
           <Button
             key={p}
             variant={period === p ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setPeriod(p as 30 | 60 | 90)}
+            onClick={() => setPeriod(p)}
+            disabled={loading}
           >
             {p} Days
           </Button>
@@ -64,7 +79,7 @@ export default function CashFlowForecastPage() {
           <p className="text-2xl font-bold">{formatCurrency(projectedInflow, true)}</p>
           <div className="flex items-center gap-1 text-green-600 text-xs mt-2">
             <TrendingUp className="w-4 h-4" />
-            +12% vs. current
+            Inflows
           </div>
         </Card>
 
@@ -73,7 +88,7 @@ export default function CashFlowForecastPage() {
           <p className="text-2xl font-bold">{formatCurrency(projectedOutflow, true)}</p>
           <div className="flex items-center gap-1 text-amber-600 text-xs mt-2">
             <TrendingDown className="w-4 h-4" />
-            -8% vs. current
+            Outflows
           </div>
         </Card>
 
@@ -96,7 +111,12 @@ export default function CashFlowForecastPage() {
 
       {/* Chart */}
       <Card className="p-6">
-        <h3 className="font-semibold mb-4">90-Day Forecast Scenarios</h3>
+        <h3 className="font-semibold mb-4">{period}-Day Forecast Scenarios</h3>
+        {loading ? (
+          <div className="flex items-center justify-center h-[400px]">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
         <ResponsiveContainer width="100%" height={400}>
           <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <defs>
@@ -144,6 +164,7 @@ export default function CashFlowForecastPage() {
             />
           </AreaChart>
         </ResponsiveContainer>
+        )}
       </Card>
 
       {/* AI Insights */}
@@ -153,31 +174,21 @@ export default function CashFlowForecastPage() {
           <Badge variant="outline" className="text-xs">AI ✦</Badge>
         </h3>
         <ul className="space-y-2 text-sm text-foreground/80">
-          <li className="flex gap-2">
-            <span className="font-bold text-primary">•</span>
-            <span>
-              Strong inflow expected March 15-22 due to quarterly loan disbursements and fixed deposit
-              maturities
-            </span>
-          </li>
-          <li className="flex gap-2">
-            <span className="font-bold text-primary">•</span>
-            <span>
-              March 29 shows highest net position (₹1.4Cr) — optimal time for strategic investments or
-              provisions
-            </span>
-          </li>
-          <li className="flex gap-2">
-            <span className="font-bold text-primary">•</span>
-            <span>
-              Pessimistic scenario remains above critical level — society liquidity remains stable even in
-              downturn
-            </span>
-          </li>
-          <li className="flex gap-2">
-            <span className="font-bold text-primary">•</span>
-            <span>Overall forecast confidence: 90% based on historical transaction patterns</span>
-          </li>
+          {loading ? (
+            <li className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Generating AI insights...
+            </li>
+          ) : aiInsights.length > 0 ? (
+            aiInsights.map((insight, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="font-bold text-primary">•</span>
+                <span>{insight}</span>
+              </li>
+            ))
+          ) : (
+            <li className="text-muted-foreground">No AI insights available</li>
+          )}
         </ul>
       </Card>
     </div>

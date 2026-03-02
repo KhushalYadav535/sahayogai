@@ -1,524 +1,357 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { membersApi, loansApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { RiskScorePanel } from '@/components/ai/risk-score-panel';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/components/providers/auth-provider';
+import { Permission } from '@/lib/types/auth';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
-import { AlertTriangle, CheckCircle, Loader, Upload } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RiskScorePanel } from '@/components/ai/risk-score-panel';
+import { formatCurrency } from '@/lib/utils/formatters';
+import {
+  ArrowLeft, ArrowRight, Search, User, CheckCircle, AlertTriangle,
+  Upload, Zap, FileText, Users, Info
+} from 'lucide-react';
 
-type Step = 'member' | 'details' | 'guarantor' | 'documents' | 'assessment' | 'review' | 'success';
+const STEPS = ['Member & Product', 'Loan Details', 'Guarantor', 'Documents', 'AI Risk Assessment', 'Review & Submit'];
 
-const steps: { id: Step; label: string }[] = [
-  { id: 'member', label: 'Member & Product' },
-  { id: 'details', label: 'Loan Details' },
-  { id: 'guarantor', label: 'Guarantor' },
-  { id: 'documents', label: 'Documents' },
-  { id: 'assessment', label: 'AI Assessment' },
-  { id: 'review', label: 'Review' },
-  { id: 'success', label: 'Success' },
+const LOAN_PRODUCTS = [
+  { id: 'SHORT_TERM', label: 'Short Term', desc: 'Up to 12 months', maxAmt: 100000, rateRange: '12–15%', icon: '⚡' },
+  { id: 'MEDIUM_TERM', label: 'Medium Term', desc: '1–3 years', maxAmt: 500000, rateRange: '14–17%', icon: '🏦' },
+  { id: 'LONG_TERM', label: 'Long Term', desc: '3+ years', maxAmt: 2000000, rateRange: '15–18%', icon: '🏛️' },
+  { id: 'GOLD_LOAN', label: 'Gold Loan', desc: 'Secured by gold', maxAmt: 300000, rateRange: '10–13%', icon: '🥇' },
 ];
 
-const mockMembers = [
-  { id: '1', name: 'Rajesh Kumar', memberId: 'MEM-2024-001', riskScore: 45, activeLoans: 1 },
-  { id: '2', name: 'Priya Sharma', memberId: 'MEM-2024-002', riskScore: 35, activeLoans: 0 },
-];
+const PURPOSES = ['Agriculture', 'Business Working Capital', 'Education', 'Medical Emergency', 'Home Renovation', 'Vehicle Purchase', 'Personal'];
+const COLLATERAL_TYPES = ['Property', 'Gold', 'FDR Lien', 'Guarantor Only'];
+const DOCS = { SHORT_TERM: ['Income Proof', 'Passport Photo', 'Bank Statement'], MEDIUM_TERM: ['Income Proof', 'Property Docs', 'Passport Photo', 'Bank Statement'], LONG_TERM: ['Income Proof', 'Property Docs', 'Passport Photo', 'Bank Statement', 'IT Return'], GOLD_LOAN: ['Passport Photo', 'Gold Ownership Proof'] };
+
+const LOAN_TYPE_MAP: Record<string, string> = {
+  SHORT_TERM: 'personal',
+  MEDIUM_TERM: 'business',
+  LONG_TERM: 'housing',
+  GOLD_LOAN: 'gold',
+};
+
+function calcEMI(P: number, annualRate: number, months: number): number {
+  if (!P || !annualRate || !months) return 0;
+  const r = annualRate / 100 / 12;
+  return Math.round(P * r * Math.pow(1 + r, months) / (Math.pow(1 + r, months) - 1));
+}
 
 export default function NewLoanPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<Step>('member');
-  const [selectedMember, setSelectedMember] = useState('');
-  const [loanProduct, setLoanProduct] = useState('');
-  const [coApplicant, setCoApplicant] = useState(false);
-  const [loanAmount, setLoanAmount] = useState('');
-  const [tenure, setTenure] = useState([12]);
-  const [collateralType, setCollateralType] = useState('');
-  const [guarantor, setGuarantor] = useState('');
-  const [documentsUploaded, setDocumentsUploaded] = useState(0);
-  const [showAssessment, setShowAssessment] = useState(false);
-  const [applicationId, setApplicationId] = useState('');
+  const { hasPermission } = useAuth();
+  const [step, setStep] = useState(0);
 
-  const calculateEMI = (amount: number, rate: number, months: number) => {
-    const monthlyRate = rate / 12 / 100;
-    const emi = (amount * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
-    return Math.round(emi);
+  // Step 1
+  const [memberSearch, setMemberSearch] = useState('');
+  const [members, setMembers] = useState<{ id: string; name: string; memberId: string; riskScore: number; activeLoans: number }[]>([]);
+  const [selectedMember, setSelectedMember] = useState<{ id: string; name: string; memberId: string; riskScore: number; activeLoans: number } | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState('');
+  const [hasCoApp, setHasCoApp] = useState(false);
+
+  // Step 2
+  const [amount, setAmount] = useState(50000);
+  const [purpose, setPurpose] = useState('');
+  const [tenure, setTenure] = useState(12);
+  const [rate] = useState(13);
+  const [collateral, setCollateral] = useState('');
+
+  // Step 3
+  const [guarantorSearch, setGuarantorSearch] = useState('');
+  const [guarantor, setGuarantor] = useState<{ id: string; name: string; memberId: string } | null>(null);
+
+  // Step 4
+  const [uploadedDocs, setUploadedDocs] = useState<Record<string, boolean>>({});
+
+  // Step 5
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiDone, setAiDone] = useState(false);
+  const [aiScore] = useState(65);
+
+  // Step 6
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [appId] = useState('LN-APPL-' + Date.now().toString().slice(-6));
+
+  const emi = calcEMI(amount, rate, tenure);
+  const productDocs = DOCS[selectedProduct as keyof typeof DOCS] || [];
+  const allDocsUploaded = productDocs.every(d => uploadedDocs[d]);
+
+  useEffect(() => {
+    membersApi.list()
+      .then(r => setMembers((r.members || []).map((m: any) => ({
+        id: m.id,
+        name: `${m.firstName || ''} ${m.lastName || ''}`.trim(),
+        memberId: m.memberNumber || m.memberId,
+        riskScore: 50,
+        activeLoans: (m.loans?.length ?? m._count?.loans ?? 0),
+      }))));
+  }, []);
+
+  const filteredMembers = members.filter(m =>
+    !memberSearch || m.name.toLowerCase().includes(memberSearch.toLowerCase()) || m.memberId.includes(memberSearch)
+  );
+
+  const getRoutingLevel = () => amount <= 50000 ? 'LOAN_OFFICER' : amount <= 200000 ? 'BRANCH_MANAGER' : 'LOAN_COMMITTEE';
+
+  const canNext = () => {
+    if (step === 0) return !!selectedMember && !!selectedProduct;
+    if (step === 1) return amount > 0 && !!purpose && tenure > 0 && !!collateral;
+    if (step === 2) return true;
+    if (step === 3) return allDocsUploaded;
+    if (step === 4) return aiDone;
+    return false;
   };
 
-  const selectedMemberData = mockMembers.find((m) => m.id === selectedMember);
-  const amount = parseInt(loanAmount) || 0;
-  const rateMap: Record<string, number> = { SHORT_TERM: 12, MEDIUM_TERM: 10, LONG_TERM: 9, GOLD_LOAN: 8 };
-  const rate = rateMap[loanProduct] || 0;
-  const emi = calculateEMI(amount, rate, tenure[0]);
+  useEffect(() => {
+    if (step === 4 && !aiDone && !aiLoading) {
+      setAiLoading(true);
+      setTimeout(() => { setAiLoading(false); setAiDone(true); }, 1800);
+    }
+  }, [step, aiDone, aiLoading]);
 
-  const handleNext = () => {
-    const stepOrder: Step[] = ['member', 'details', 'guarantor', 'documents', 'assessment', 'review', 'success'];
-    const currentIndex = stepOrder.indexOf(currentStep);
-    if (currentIndex < stepOrder.length - 1) {
-      setCurrentStep(stepOrder[currentIndex + 1]);
+  const handleSubmit = async () => {
+    if (!selectedMember) return;
+    setSubmitting(true);
+    try {
+      await loansApi.createApplication({
+        memberId: selectedMember.id,
+        loanType: LOAN_TYPE_MAP[selectedProduct] || 'personal',
+        amountRequested: amount,
+        purpose: purpose || 'General',
+        tenureMonths: tenure,
+      });
+      setSubmitted(true);
+    } catch {
+      setSubmitting(false);
     }
   };
 
-  const handlePrevious = () => {
-    const stepOrder: Step[] = ['member', 'details', 'guarantor', 'documents', 'assessment', 'review', 'success'];
-    const currentIndex = stepOrder.indexOf(currentStep);
-    if (currentIndex > 0) {
-      setCurrentStep(stepOrder[currentIndex - 1]);
-    }
-  };
-
-  const handleSubmit = () => {
-    setApplicationId('LN-2024-00156');
-    setCurrentStep('success');
-  };
+  if (submitted) {
+    return (
+      <div className="max-w-lg mx-auto text-center space-y-6 py-10">
+        <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mx-auto">
+          <CheckCircle className="w-10 h-10 text-green-600" />
+        </div>
+        <h2 className="text-2xl font-bold">Application Submitted!</h2>
+        <div className="p-4 rounded-lg border border-border bg-muted/30">
+          <p className="text-sm text-muted-foreground">Application ID</p>
+          <p className="font-mono text-xl font-bold text-primary mt-1">{appId}</p>
+          <Badge className="mt-2 bg-yellow-100 text-yellow-800">PENDING_APPROVAL</Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Routing to: <strong>{getRoutingLevel()}</strong> (amount ≤ ₹{amount <= 50000 ? '50,000' : amount <= 200000 ? '2,00,000' : '2,00,000+'})
+        </p>
+        <Button onClick={() => router.push('/dashboard/loans')}>Back to Loans</Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">New Loan Application</h1>
-        <p className="text-muted-foreground mt-1">Multi-step loan application with AI assessment</p>
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="w-4 h-4" /></Button>
+        <div><h1 className="text-2xl font-bold">New Loan Application</h1><p className="text-muted-foreground text-sm">Step {step + 1} of {STEPS.length}</p></div>
       </div>
 
-      {/* Stepper */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-2">
-        {steps.map((step, idx) => (
-          <React.Fragment key={step.id}>
-            <button
-              onClick={() => setCurrentStep(step.id)}
-              className={`px-3 py-2 rounded-lg whitespace-nowrap text-sm font-medium transition-all ${
-                currentStep === step.id
-                  ? 'bg-primary text-white'
-                  : steps.findIndex((s) => s.id === currentStep) > idx
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-gray-100 text-gray-700'
-              }`}
-            >
-              {step.label}
-            </button>
-            {idx < steps.length - 1 && <div className="w-1 h-1 rounded-full bg-gray-300" />}
-          </React.Fragment>
+      {/* Progress */}
+      <div className="flex gap-1">
+        {STEPS.map((s, i) => (
+          <div key={i} className={`flex-1 h-2 rounded-full transition-all ${i <= step ? 'bg-primary' : 'bg-muted'}`} />
         ))}
       </div>
+      <p className="text-sm font-semibold text-center text-primary">{STEPS[step]}</p>
 
-      {/* Step Content */}
-      <div className="space-y-6">
-        {currentStep === 'member' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 1: Member & Product Selection</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+
+          {/* STEP 1 */}
+          {step === 0 && (
+            <div className="space-y-5">
               <div>
-                <Label className="mb-3 block">Select Member *</Label>
-                <div className="grid gap-3">
-                  {mockMembers.map((member) => (
-                    <button
-                      key={member.id}
-                      onClick={() => setSelectedMember(member.id)}
-                      className={`p-4 rounded-lg border text-left transition-all ${
-                        selectedMember === member.id ? 'border-primary bg-primary/5' : 'border-input'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold">{member.name}</p>
-                          <p className="text-sm text-muted-foreground">{member.memberId}</p>
-                        </div>
-                        <div className="text-right">
-                          <Badge variant="outline" className="mb-1">Risk Score: {member.riskScore}</Badge>
-                          <p className="text-xs text-muted-foreground">{member.activeLoans} active loan(s)</p>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                <label className="text-sm font-medium mb-2 block">Search Member</label>
+                <div className="relative"><Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" /><Input className="pl-9" placeholder="Name or Member ID" value={memberSearch} onChange={e => setMemberSearch(e.target.value)} /></div>
+                {memberSearch && !selectedMember && filteredMembers.map(m => (
+                  <button key={m.id} onClick={() => { setSelectedMember(m); setMemberSearch(m.name); }} className="w-full text-left p-3 mt-2 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div><p className="font-medium">{m.name}</p><p className="text-xs text-muted-foreground">{m.memberId}</p></div>
+                      <div className="text-right"><Badge className={m.riskScore >= 70 ? 'bg-green-100 text-green-800' : m.riskScore >= 50 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}>Risk: {m.riskScore}</Badge><p className="text-xs text-muted-foreground mt-1">{m.activeLoans} active loan(s)</p></div>
+                    </div>
+                  </button>
+                ))}
+                {selectedMember && (
+                  <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-between">
+                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center"><User className="w-5 h-5 text-primary-foreground" /></div><div><p className="font-semibold">{selectedMember.name}</p><p className="text-xs text-muted-foreground">{selectedMember.memberId}</p></div></div>
+                    <Button size="sm" variant="ghost" onClick={() => { setSelectedMember(null); setMemberSearch(''); }}>Change</Button>
+                  </div>
+                )}
               </div>
 
-              {selectedMemberData && (
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <p className="font-semibold text-blue-900 mb-2">Selected Member</p>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="text-blue-700">Name</p>
-                      <p className="font-semibold text-blue-900">{selectedMemberData.name}</p>
-                    </div>
-                    <div>
-                      <p className="text-blue-700">Risk Score</p>
-                      <p className="font-semibold text-blue-900">{selectedMemberData.riskScore}/100</p>
-                    </div>
-                    <div>
-                      <p className="text-blue-700">Active Loans</p>
-                      <p className="font-semibold text-blue-900">{selectedMemberData.activeLoans}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div>
-                <Label className="mb-3 block">Loan Product *</Label>
+                <label className="text-sm font-medium mb-2 block">Loan Product</label>
                 <div className="grid grid-cols-2 gap-3">
-                  {['SHORT_TERM', 'MEDIUM_TERM', 'LONG_TERM', 'GOLD_LOAN'].map((product) => (
-                    <button
-                      key={product}
-                      onClick={() => setLoanProduct(product)}
-                      className={`p-4 rounded-lg border text-left ${
-                        loanProduct === product ? 'border-primary bg-primary/5' : 'border-input'
-                      }`}
-                    >
-                      <p className="font-semibold text-sm">{product.replace(/_/g, ' ')}</p>
-                      <p className="text-xs text-muted-foreground">Rate: {rateMap[product]}%</p>
+                  {LOAN_PRODUCTS.map(p => (
+                    <button key={p.id} onClick={() => setSelectedProduct(p.id)} className={`p-4 rounded-lg border text-left transition-all ${selectedProduct === p.id ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50'}`}>
+                      <div className="text-2xl mb-2">{p.icon}</div>
+                      <p className="font-semibold text-sm">{p.label}</p>
+                      <p className="text-xs text-muted-foreground">{p.desc}</p>
+                      <p className="text-xs text-primary mt-1">{p.rateRange} p.a.</p>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <Checkbox checked={coApplicant} onCheckedChange={(checked) => setCoApplicant(checked as boolean)} />
-                <Label>Add Co-applicant</Label>
+                <Checkbox id="coapp" checked={hasCoApp} onCheckedChange={v => setHasCoApp(!!v)} />
+                <label htmlFor="coapp" className="text-sm cursor-pointer">Add Co-Applicant</label>
               </div>
+            </div>
+          )}
 
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
-                <Button onClick={handleNext} disabled={!selectedMember || !loanProduct} className="ml-auto">
-                  Continue
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {currentStep === 'details' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 2: Loan Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
+          {/* STEP 2 */}
+          {step === 1 && (
+            <div className="space-y-5">
               <div>
-                <Label htmlFor="amount">Requested Amount (₹) *</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  placeholder="50000"
-                  value={loanAmount}
-                  onChange={(e) => setLoanAmount(e.target.value)}
-                />
+                <label className="text-sm font-medium">Requested Amount (₹)</label>
+                <Input className="mt-1 text-xl font-bold" type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} />
+                <p className="text-xs text-muted-foreground mt-1">Max: {formatCurrency(LOAN_PRODUCTS.find(p => p.id === selectedProduct)?.maxAmt ?? 100000, 0)}</p>
               </div>
-
               <div>
-                <Label className="mb-3 block">Tenure: {tenure[0]} months</Label>
-                <Slider value={tenure} onValueChange={setTenure} min={6} max={60} step={1} />
+                <label className="text-sm font-medium">Purpose</label>
+                <div className="flex flex-wrap gap-2 mt-2">{PURPOSES.map(p => <button key={p} onClick={() => setPurpose(p)} className={`px-3 py-1 rounded-full text-sm border transition-colors ${purpose === p ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:border-primary'}`}>{p}</button>)}</div>
               </div>
-
-              {amount > 0 && (
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-2">
-                  <p className="font-semibold text-blue-900">EMI Calculation</p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-blue-700">Loan Amount</p>
-                      <p className="font-semibold">₹{amount.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-blue-700">Interest Rate</p>
-                      <p className="font-semibold">{rate}% p.a.</p>
-                    </div>
-                    <div>
-                      <p className="text-blue-700">Tenure</p>
-                      <p className="font-semibold">{tenure[0]} months</p>
-                    </div>
-                    <div>
-                      <p className="text-blue-700">Expected EMI</p>
-                      <p className="font-semibold text-lg">₹{emi.toLocaleString()}</p>
-                    </div>
-                  </div>
+              <div>
+                <div className="flex justify-between mb-1"><label className="text-sm font-medium">Tenure</label><span className="text-sm font-bold text-primary">{tenure} months</span></div>
+                <Slider min={3} max={selectedProduct === 'LONG_TERM' ? 84 : selectedProduct === 'MEDIUM_TERM' ? 36 : 12} step={1} value={[tenure]} onValueChange={([v]) => setTenure(v)} />
+              </div>
+              {emi > 0 && (
+                <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 text-center">
+                  <p className="text-xs text-muted-foreground">Estimated Monthly EMI</p>
+                  <p className="text-3xl font-bold text-primary mt-1">{formatCurrency(emi)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">@ {rate}% p.a. | {tenure} months | Principal: {formatCurrency(amount, 0)}</p>
                 </div>
               )}
-
               <div>
-                <Label className="mb-3 block">Collateral Type *</Label>
-                <Select value={collateralType} onValueChange={setCollateralType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PROPERTY">Property</SelectItem>
-                    <SelectItem value="GOLD">Gold</SelectItem>
-                    <SelectItem value="FDR_LIEN">FDR Lien</SelectItem>
-                    <SelectItem value="GUARANTOR_ONLY">Guarantor Only</SelectItem>
-                  </SelectContent>
-                </Select>
+                <label className="text-sm font-medium">Collateral Type</label>
+                <div className="grid grid-cols-2 gap-2 mt-2">{COLLATERAL_TYPES.map(c => <button key={c} onClick={() => setCollateral(c)} className={`px-3 py-2 rounded-lg text-sm border transition-colors ${collateral === c ? 'bg-primary/10 border-primary text-primary font-medium' : 'border-border hover:border-primary/50'}`}>{c}</button>)}</div>
               </div>
+            </div>
+          )}
 
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handlePrevious}>Previous</Button>
-                <Button onClick={handleNext} disabled={!loanAmount || !collateralType} className="ml-auto">
-                  Continue
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {currentStep === 'guarantor' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 3: Guarantor</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <Label className="mb-3 block">Select Guarantor Member *</Label>
-                <div className="grid gap-3">
-                  {mockMembers
-                    .filter((m) => m.id !== selectedMember)
-                    .map((member) => (
-                      <button
-                        key={member.id}
-                        onClick={() => setGuarantor(member.id)}
-                        className={`p-4 rounded-lg border text-left ${
-                          guarantor === member.id ? 'border-primary bg-primary/5' : 'border-input'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-semibold">{member.name}</p>
-                            <p className="text-sm text-muted-foreground">{member.memberId}</p>
-                          </div>
-                          <Badge variant="outline">Exposure: {member.activeLoans * 40}%</Badge>
-                        </div>
-                      </button>
-                    ))}
+          {/* STEP 3 */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">Add a guarantor for this loan application. Guarantors must be active members.</p>
+              <div className="relative"><Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" /><Input className="pl-9" placeholder="Search guarantor..." value={guarantorSearch} onChange={e => setGuarantorSearch(e.target.value)} /></div>
+              {guarantorSearch && !guarantor && members.filter(m => m.id !== selectedMember?.id && (m.name.toLowerCase().includes(guarantorSearch.toLowerCase()) || m.memberId.includes(guarantorSearch))).map(m => (
+                <button key={m.id} onClick={() => { setGuarantor(m); setGuarantorSearch(m.name); }} className="w-full text-left p-3 rounded-lg border border-border hover:border-primary transition-colors">
+                  <p className="font-medium">{m.name}</p><p className="text-xs text-muted-foreground">{m.memberId}</p>
+                </button>
+              ))}
+              {guarantor && (
+                <div className="p-4 rounded-lg border border-border space-y-2">
+                  <div className="flex items-center justify-between"><p className="font-semibold">{guarantor.name}</p><Button size="sm" variant="ghost" onClick={() => { setGuarantor(null); setGuarantorSearch(''); }}>Remove</Button></div>
+                  <p className="text-xs text-muted-foreground">{guarantor.memberId}</p>
+                  <div className="flex items-center gap-2"><Users className="w-3.5 h-3.5 text-muted-foreground" /><p className="text-xs text-muted-foreground">Existing guarantees: 0 | Exposure: 0%</p></div>
+                  {amount > 200000 && <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950"><AlertTriangle className="h-4 w-4 text-amber-600" /><AlertDescription className="text-xs text-amber-700">High-value loan — consider adding a second guarantor</AlertDescription></Alert>}
                 </div>
-              </div>
+              )}
+              <p className="text-xs text-muted-foreground italic">Guarantor is optional for loans under ₹25,000</p>
+            </div>
+          )}
 
-              <Alert className="border-amber-200 bg-amber-50">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-800">
-                  Guarantor exposure check: Ensure total exposure does not exceed 50%
-                </AlertDescription>
-              </Alert>
-
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handlePrevious}>Previous</Button>
-                <Button onClick={handleNext} disabled={!guarantor} className="ml-auto">
-                  Continue
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {currentStep === 'documents' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 4: Documents</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-3">
-                {['Income Proof', 'Property Docs', 'Passport Photo', 'Bank Statement'].map((doc) => (
-                  <div key={doc} className="p-4 border rounded-lg flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Upload className="w-4 h-4 text-muted-foreground" />
-                      <span className="font-medium">{doc}</span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDocumentsUploaded(d => Math.min(d + 1, 4))}
-                    >
-                      {documentsUploaded > 0 ? '✓ Uploaded' : 'Upload'}
-                    </Button>
+          {/* STEP 4 */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">Upload required documents for <strong>{selectedProduct.replace('_', ' ')}</strong> loan</p>
+              {productDocs.map(doc => (
+                <div key={doc} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                    <div><p className="text-sm font-medium">{doc}</p>{uploadedDocs[doc] && <p className="text-xs text-green-600">✓ Uploaded</p>}</div>
                   </div>
-                ))}
-              </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setUploadedDocs(prev => ({ ...prev, [doc]: true }))}><Upload className="w-3.5 h-3.5 mr-1" />{uploadedDocs[doc] ? 'Replace' : 'Upload'}</Button>
+                    {uploadedDocs[doc] && <Button size="sm" variant="ghost" className="text-muted-foreground">OCR Extract</Button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handlePrevious}>Previous</Button>
-                <Button onClick={handleNext} disabled={documentsUploaded < 4} className="ml-auto">
-                  Continue
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {currentStep === 'assessment' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 5: AI Risk Assessment</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {!showAssessment ? (
-                <div className="text-center py-12">
-                  <Loader className="w-12 h-12 animate-spin mx-auto mb-4 text-primary" />
-                  <p className="text-lg font-semibold">AI is computing risk score...</p>
-                  <p className="text-sm text-muted-foreground mt-2">Please wait while we analyze your application</p>
-                  <Button className="mt-6" onClick={() => setShowAssessment(true)}>
-                    Continue
-                  </Button>
+          {/* STEP 5 */}
+          {step === 4 && (
+            <div className="space-y-4">
+              {aiLoading ? (
+                <div className="text-center py-10 space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto animate-pulse">
+                    <Zap className="w-8 h-8 text-primary" />
+                  </div>
+                  <p className="font-semibold text-lg">AI is computing risk score...</p>
+                  <p className="text-sm text-muted-foreground">Analyzing repayment history, savings ratio, income stability...</p>
+                  <div className="flex justify-center gap-1 mt-4">{[0, 1, 2].map(i => <div key={i} className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />)}</div>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <RiskScorePanel
-                    score={{
-                      overall: 62,
-                      factors: [
-                        { name: 'Age', score: 70 },
-                        { name: 'Shares Held', score: 65 },
-                        { name: 'KYC Status', score: 100 },
-                        { name: 'Membership Duration', score: 60 },
-                        { name: 'Active Loans', score: 40 },
-                      ],
-                    }}
-                  />
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Eligibility Engine Results</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                        <span>Age: 44 years (eligible)</span>
+                <div className="space-y-4">
+                  <RiskScorePanel score={{ overall: aiScore, factors: [{ name: 'Repayment History', score: 70 }, { name: 'Income Stability', score: 55 }, { name: 'Loan Utilization', score: 60 }, { name: 'Savings Ratio', score: 65 }, { name: 'Collateral Value', score: 75 }] }} showOverrideButton={hasPermission(Permission.LOAN_APPROVE)} />
+                  <div className="p-4 rounded-lg border border-border space-y-2">
+                    <p className="text-sm font-semibold">Eligibility Engine Results</p>
+                    {[['Age (18–65)', true], ['Min Shares (5)', true], ['KYC Status', true], ['Membership (6m+)', true], ['Active Loans ≤2', false]].map(([rule, pass]) => (
+                      <div key={String(rule)} className="flex items-center gap-2 text-sm">
+                        <span className={String(pass) === 'true' ? 'text-green-500' : 'text-red-500'}>{String(pass) === 'true' ? '✓' : '✗'}</span>
+                        <span>{String(rule)}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                        <span>Shares held: 10 shares (eligible)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                        <span>KYC Status: VERIFIED (eligible)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                        <span>Membership: 2+ years (eligible)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-red-600" />
-                        <span>Active Loans: 1 existing (limit: 1)</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Alert className="border-green-200 bg-green-50">
-                    <AlertDescription className="text-green-800">
-                      AI Recommendation: APPROVE - Score 62/100 (AMBER - Medium Risk)
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={handlePrevious}>Previous</Button>
-                    <Button onClick={handleNext} className="ml-auto">
-                      Proceed to Submit
-                    </Button>
+                    ))}
+                  </div>
+                  <div className={`p-3 rounded-lg text-center font-semibold text-sm ${aiScore >= 70 ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200' : aiScore >= 50 ? 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-200' : 'bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200'}`}>
+                    {aiScore >= 70 ? '✓ Recommended: Proceed to Submit' : aiScore >= 50 ? '⚠ Recommended: Refer to Loan Committee' : '✗ High Risk: Consider Rejection'}
+                    <span className="ml-2 text-xs font-normal opacity-70">AI ✦ Confidence: 87%</span>
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          )}
 
-        {currentStep === 'review' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 6: Review & Submit</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <h4 className="font-semibold">Application Summary</h4>
-                <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Member</span>
-                    <span className="font-semibold">{selectedMemberData?.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Loan Product</span>
-                    <span className="font-semibold">{loanProduct?.replace(/_/g, ' ')}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Loan Amount</span>
-                    <span className="font-semibold">₹{loanAmount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Rate</span>
-                    <span className="font-semibold">{rate}% p.a.</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tenure</span>
-                    <span className="font-semibold">{tenure[0]} months</span>
-                  </div>
-                  <div className="flex justify-between border-t pt-2">
-                    <span>Expected EMI</span>
-                    <span className="font-bold">₹{emi.toLocaleString()}</span>
-                  </div>
-                </div>
+          {/* STEP 6 */}
+          {step === 5 && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border divide-y divide-border">
+                {[['Member', selectedMember?.name + ' (' + selectedMember?.memberId + ')'], ['Product', selectedProduct.replace('_', ' ')], ['Amount', formatCurrency(amount, 0)], ['Rate', rate + '% p.a.'], ['Tenure', tenure + ' months'], ['Monthly EMI', formatCurrency(emi)], ['Purpose', purpose], ['Collateral', collateral], ['Guarantor', guarantor?.name || '—']].map(([k, v]) => (
+                  <div key={k} className="flex justify-between px-4 py-2.5 text-sm"><span className="text-muted-foreground">{k}</span><span className="font-medium">{v}</span></div>
+                ))}
               </div>
-
-              <Alert>
-                <AlertDescription className="text-sm">
-                  This loan will be routed to: LOAN_OFFICER (approval limit: ₹50,000)
-                </AlertDescription>
-              </Alert>
-
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handlePrevious}>Previous</Button>
-                <Button onClick={handleSubmit} className="ml-auto">
-                  Submit Application
-                </Button>
+              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-2"><Info className="w-4 h-4 text-blue-600" /><p className="text-sm font-semibold text-blue-800 dark:text-blue-200">Routing Preview</p></div>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">This loan will be routed to: <strong>{getRoutingLevel()}</strong> (amount {amount <= 50000 ? '≤ ₹50,000' : amount <= 200000 ? '≤ ₹2,00,000' : '> ₹2,00,000'})</p>
               </div>
-            </CardContent>
-          </Card>
-        )}
+              {amount > 10000 && <Alert><Info className="h-4 w-4" /><AlertDescription className="text-xs">Will require Checker approval (above ₹10,000 threshold)</AlertDescription></Alert>}
+              <Button className="w-full" onClick={handleSubmit} disabled={submitting}>
+                {submitting ? 'Submitting...' : 'Submit Application'}
+              </Button>
+            </div>
+          )}
 
-        {currentStep === 'success' && (
-          <Card className="border-green-200 bg-green-50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-green-900">
-                <CheckCircle className="w-6 h-6" />
-                Application Submitted Successfully
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-white p-6 rounded-lg border border-green-200">
-                <p className="text-sm text-muted-foreground mb-1">Application Reference</p>
-                <p className="text-2xl font-bold">{applicationId}</p>
-              </div>
-
-              <div className="space-y-3 text-sm">
-                <h4 className="font-semibold">Next Steps</h4>
-                <ul className="space-y-2">
-                  <li className="flex gap-2">
-                    <span className="text-green-600">✓</span>
-                    <span>Application submitted to Loan Officer approval queue</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="text-amber-600">→</span>
-                    <span>Pending approval (typically 2-3 business days)</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="text-blue-600">→</span>
-                    <span>You will receive notification upon approval/rejection</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" className="w-full" onClick={() => router.push('/dashboard/loans')}>
-                  View All Loans
-                </Button>
-                <Button className="w-full" onClick={() => router.push('/dashboard')}>
-                  Go to Dashboard
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+          {/* Navigation */}
+          {step < 5 && (
+            <div className="flex justify-between pt-2 border-t border-border">
+              <Button variant="outline" onClick={() => step > 0 ? setStep(s => s - 1) : router.back()}>
+                <ArrowLeft className="w-4 h-4 mr-2" />{step === 0 ? 'Cancel' : 'Back'}
+              </Button>
+              <Button onClick={() => setStep(s => s + 1)} disabled={!canNext()}>
+                Next <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

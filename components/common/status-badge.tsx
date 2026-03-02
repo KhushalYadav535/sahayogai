@@ -1,7 +1,7 @@
 import React from 'react'
 import { Badge } from '@/components/ui/badge'
 
-type Status = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'ESCALATED' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'DORMANT' | 'PENDING' | 'ACKNOWLEDGED' | 'DISMISSED'
+type Status = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'POSTED' | 'REJECTED' | 'ESCALATED' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'DORMANT' | 'PENDING' | 'ACKNOWLEDGED' | 'DISMISSED'
 
 interface StatusBadgeProps {
   status: Status
@@ -13,6 +13,7 @@ const statusStyles: Record<Status, { bg: string; text: string; label: string }> 
   DRAFT: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Draft' },
   PENDING_APPROVAL: { bg: 'bg-amber-100', text: 'text-amber-800', label: 'Pending Approval' },
   APPROVED: { bg: 'bg-green-100', text: 'text-green-800', label: 'Approved' },
+  POSTED: { bg: 'bg-green-100', text: 'text-green-800', label: 'Posted' },
   REJECTED: { bg: 'bg-red-100', text: 'text-red-800', label: 'Rejected' },
   ESCALATED: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Escalated' },
   ACTIVE: { bg: 'bg-green-100', text: 'text-green-800', label: 'Active' },

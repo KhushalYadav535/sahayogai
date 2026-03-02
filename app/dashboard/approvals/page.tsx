@@ -1,69 +1,32 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AlertCircle, Check, X, ArrowUp } from 'lucide-react'
-import { ApprovalItem, ApprovalType, ApprovalStatus } from '@/lib/types/approval'
+import { AlertCircle, Check, X, ArrowUp, Loader2 } from 'lucide-react'
+import { ApprovalItem, ApprovalStatus } from '@/lib/types/approval'
 import { StatusBadge } from '@/components/common/status-badge'
-import { formatCurrency, formatDate, formatTimeAgo } from '@/lib/utils/format'
+import { formatCurrency, formatTimeAgo } from '@/lib/utils/format'
+import { approvalsApi } from '@/lib/api'
 
-const mockApprovals: ApprovalItem[] = [
-  {
-    id: '1',
-    type: ApprovalType.LOAN_APPROVAL,
-    status: ApprovalStatus.PENDING_APPROVAL,
-    description: 'Loan application for ₹2,50,000',
-    makerName: 'Raj Patel',
-    makerRole: 'Loan Officer',
-    amount: 250000,
-    createdAt: new Date(Date.now() - 30 * 60000),
-    slaDeadline: new Date(Date.now() + 3 * 60 * 60000),
-    entityId: 'LN001',
-    entityType: 'Loan',
-    diffData: { status: 'PENDING -> APPROVED', approvalDate: formatDate(new Date()) },
-  },
-  {
-    id: '2',
-    type: ApprovalType.JOURNAL_ENTRY,
-    status: ApprovalStatus.PENDING_APPROVAL,
-    description: 'Interest accrual posting for Feb 2025',
-    makerName: 'Priya Singh',
-    makerRole: 'Accountant',
-    amount: 125600,
-    createdAt: new Date(Date.now() - 2 * 60 * 60000),
-    slaDeadline: new Date(Date.now() + 30 * 60000),
-    entityId: 'JE002',
-    entityType: 'JournalEntry',
-  },
-  {
-    id: '3',
-    type: ApprovalType.MEMBER_KYC,
-    status: ApprovalStatus.PENDING_APPROVAL,
-    description: 'KYC update for member Rajesh Kumar',
-    makerName: 'Secretary',
-    makerRole: 'Secretary',
-    createdAt: new Date(Date.now() - 5 * 60 * 60000),
-    slaDeadline: new Date(Date.now() + 4 * 60 * 60000),
-    entityId: 'MEM123',
-    entityType: 'Member',
-  },
-  {
-    id: '4',
-    type: ApprovalType.DEPOSIT_CREATION,
-    status: ApprovalStatus.APPROVED,
-    description: 'Fixed deposit opening ₹5,00,000',
-    makerName: 'Amit Kumar',
-    makerRole: 'Accountant',
-    amount: 500000,
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60000),
-    slaDeadline: new Date(Date.now() - 20 * 60 * 60000),
-    entityId: 'DEP045',
-    entityType: 'Deposit',
-  },
-]
+function mapApiItemToApproval(item: any): ApprovalItem {
+  return {
+    id: item.id,
+    type: item.type,
+    status: item.status as ApprovalStatus,
+    description: item.description,
+    makerName: item.makerName,
+    makerRole: item.makerRole,
+    amount: item.amount,
+    createdAt: new Date(item.createdAt),
+    slaDeadline: new Date(item.slaDeadline),
+    entityId: item.entityId,
+    entityType: item.entityType,
+    source: item.source,
+  }
+}
 
 const getSLAColor = (deadline: Date): 'green' | 'amber' | 'red' => {
   const now = new Date()
@@ -85,49 +48,94 @@ const getSLABadgeClass = (color: 'green' | 'amber' | 'red'): string => {
 }
 
 export default function ApprovalsPage() {
-  const [approvals, setApprovals] = useState<ApprovalItem[]>(mockApprovals)
+  const [approvals, setApprovals] = useState<ApprovalItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
   const [selectedApproval, setSelectedApproval] = useState<ApprovalItem | null>(null)
   const [showApproveModal, setShowApproveModal] = useState(false)
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [comments, setComments] = useState('')
   const [rejectionReason, setRejectionReason] = useState('')
 
-  const handleApprove = () => {
-    if (selectedApproval && comments) {
-      setApprovals(
-        approvals.map((a) =>
-          a.id === selectedApproval.id
-            ? { ...a, status: ApprovalStatus.APPROVED, comments }
-            : a
+  const fetchApprovals = async (status?: 'pending' | 'approved' | 'rejected' | 'all') => {
+    try {
+      setLoading(true)
+      const res = await approvalsApi.list({ status: status ?? 'all' })
+      if (res.success) {
+        const raw = (res.approvals && res.approvals.length > 0)
+          ? res.approvals
+          : [...(res.pending || []), ...(res.approved || []), ...(res.rejected || [])]
+        setApprovals(raw.map(mapApiItemToApproval))
+      }
+    } catch (e) {
+      console.error('Failed to fetch approvals', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchApprovals()
+  }, [])
+
+  const handleApprove = async () => {
+    if (!selectedApproval) return
+    try {
+      setActionLoading(true)
+      if (selectedApproval.source === 'voucher') {
+        await approvalsApi.approveVoucher(selectedApproval.id, { comments })
+      } else if (selectedApproval.source === 'loan_application') {
+        await approvalsApi.approveLoan(selectedApproval.id, { comments })
+      } else {
+        throw new Error('Unknown approval source')
+      }
+      setApprovals((prev) =>
+        prev.map((a) =>
+          a.id === selectedApproval.id ? { ...a, status: ApprovalStatus.APPROVED as ApprovalStatus } : a
         )
       )
       setShowApproveModal(false)
       setComments('')
       setSelectedApproval(null)
+      fetchApprovals()
+    } catch (e) {
+      console.error('Approve failed', e)
+    } finally {
+      setActionLoading(false)
     }
   }
 
-  const handleReject = () => {
-    if (selectedApproval && rejectionReason) {
-      setApprovals(
-        approvals.map((a) =>
-          a.id === selectedApproval.id
-            ? { ...a, status: ApprovalStatus.REJECTED, rejectionReason }
-            : a
+  const handleReject = async () => {
+    if (!selectedApproval || !rejectionReason) return
+    try {
+      setActionLoading(true)
+      if (selectedApproval.source === 'voucher') {
+        await approvalsApi.rejectVoucher(selectedApproval.id, { reason: rejectionReason })
+      } else if (selectedApproval.source === 'loan_application') {
+        await approvalsApi.rejectLoan(selectedApproval.id, { reason: rejectionReason })
+      } else {
+        throw new Error('Unknown approval source')
+      }
+      setApprovals((prev) =>
+        prev.map((a) =>
+          a.id === selectedApproval.id ? { ...a, status: ApprovalStatus.REJECTED as ApprovalStatus, rejectionReason } : a
         )
       )
       setShowRejectModal(false)
       setRejectionReason('')
       setSelectedApproval(null)
+      fetchApprovals()
+    } catch (e) {
+      console.error('Reject failed', e)
+    } finally {
+      setActionLoading(false)
     }
   }
 
   const handleEscalate = (approval: ApprovalItem) => {
     setApprovals(
       approvals.map((a) =>
-        a.id === approval.id
-          ? { ...a, status: ApprovalStatus.ESCALATED }
-          : a
+        a.id === approval.id ? { ...a, status: ApprovalStatus.ESCALATED } : a
       )
     )
   }
@@ -138,6 +146,14 @@ export default function ApprovalsPage() {
   const escalated = approvals.filter((a) => a.status === ApprovalStatus.ESCALATED)
 
   const pendingCount = pending.length
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -228,36 +244,40 @@ export default function ApprovalsPage() {
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-green-600 hover:text-green-600"
-                              onClick={() => {
-                                setSelectedApproval(approval)
-                                setShowApproveModal(true)
-                              }}
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-red-600 hover:text-red-600"
-                              onClick={() => {
-                                setSelectedApproval(approval)
-                                setShowRejectModal(true)
-                              }}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-purple-600 hover:text-purple-600"
-                              onClick={() => handleEscalate(approval)}
-                            >
-                              <ArrowUp className="w-4 h-4" />
-                            </Button>
+                            {approval.source && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-green-600 hover:text-green-600"
+                                  onClick={() => {
+                                    setSelectedApproval(approval)
+                                    setShowApproveModal(true)
+                                  }}
+                                >
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-red-600 hover:text-red-600"
+                                  onClick={() => {
+                                    setSelectedApproval(approval)
+                                    setShowRejectModal(true)
+                                  }}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-purple-600 hover:text-purple-600"
+                                  onClick={() => handleEscalate(approval)}
+                                >
+                                  <ArrowUp className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -385,10 +405,10 @@ export default function ApprovalsPage() {
               </Button>
               <Button
                 onClick={handleApprove}
-                disabled={!comments}
+                disabled={actionLoading || (selectedApproval && !selectedApproval.source)}
                 className="bg-green-600 hover:bg-green-700"
               >
-                Approve
+                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve'}
               </Button>
             </div>
           </Card>
@@ -426,10 +446,10 @@ export default function ApprovalsPage() {
               </Button>
               <Button
                 onClick={handleReject}
-                disabled={!rejectionReason}
+                disabled={actionLoading || !rejectionReason}
                 variant="destructive"
               >
-                Reject
+                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reject'}
               </Button>
             </div>
           </Card>

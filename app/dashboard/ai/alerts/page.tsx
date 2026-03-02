@@ -1,72 +1,15 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AlertTriangle, TrendingUp, AlertCircle, Zap, Link as LinkIcon } from 'lucide-react'
+import { AlertTriangle, TrendingUp, AlertCircle, Zap, Link as LinkIcon, Loader2 } from 'lucide-react'
 import { AIAlert } from '@/lib/types/ai'
-import { formatTimeAgo, formatCurrency } from '@/lib/utils/format'
-
-const mockAlerts: AIAlert[] = [
-  {
-    id: '1',
-    type: 'FRAUD',
-    severity: 'CRITICAL',
-    affectedEntity: {
-      type: 'TRANSACTION',
-      id: 'TXN001',
-      name: 'Large unusual withdrawal',
-    },
-    explanation: 'Member withdrew ₹2.5L at 2 AM, unusual time and amount for this member',
-    confidence: 98,
-    timestamp: new Date(Date.now() - 30 * 60000),
-    status: 'PENDING',
-  },
-  {
-    id: '2',
-    type: 'NPA_PREDICTION',
-    severity: 'HIGH',
-    affectedEntity: {
-      type: 'MEMBER',
-      id: 'MEM002',
-      name: 'Rajesh Kumar',
-    },
-    explanation: 'Member has missed 2 EMI payments and income has decreased 40% YoY',
-    confidence: 87,
-    timestamp: new Date(Date.now() - 2 * 60 * 60000),
-    status: 'PENDING',
-  },
-  {
-    id: '3',
-    type: 'INTEREST_ANOMALY',
-    severity: 'MEDIUM',
-    affectedEntity: {
-      type: 'TRANSACTION',
-      id: 'TXN003',
-      name: 'Interest calculation error',
-    },
-    explanation: 'Interest accrual is 15% higher than expected for this FD product',
-    confidence: 76,
-    timestamp: new Date(Date.now() - 5 * 60 * 60000),
-    status: 'ACKNOWLEDGED',
-  },
-  {
-    id: '4',
-    type: 'CASH_FLOW_WARNING',
-    severity: 'MEDIUM',
-    affectedEntity: {
-      type: 'MEMBER',
-      id: 'MEM004',
-      name: 'Society Treasury',
-    },
-    explanation: 'Projected outflows exceed inflows by ₹5L in next 7 days',
-    confidence: 82,
-    timestamp: new Date(Date.now() - 1 * 60 * 60000),
-    status: 'PENDING',
-  },
-]
+import { formatTimeAgo } from '@/lib/utils/format'
+import { aiAlertsApi } from '@/lib/api'
 
 const getSeverityColor = (severity: string) => {
   switch (severity) {
@@ -98,9 +41,39 @@ const getAlertIcon = (type: string) => {
   }
 }
 
+function mapApiAlert(a: any): AIAlert {
+  return {
+    id: a.id,
+    type: a.type,
+    severity: a.severity,
+    affectedEntity: a.affectedEntity,
+    explanation: a.explanation,
+    confidence: a.confidence,
+    timestamp: new Date(a.timestamp),
+    status: a.status,
+  }
+}
+
 export default function AIAlertsPage() {
-  const [alerts, setAlerts] = useState<AIAlert[]>(mockAlerts)
+  const [alerts, setAlerts] = useState<AIAlert[]>([])
+  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'fraud' | 'interest' | 'npa' | 'cashflow'>('all')
+
+  const fetchAlerts = async () => {
+    try {
+      setLoading(true)
+      const res = await aiAlertsApi.list()
+      if (res.success) setAlerts((res.alerts || []).map(mapApiAlert))
+    } catch (e) {
+      console.error('Failed to fetch AI alerts', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAlerts()
+  }, [])
 
   const filteredAlerts = alerts.filter((alert) => {
     if (filter === 'fraud') return alert.type === 'FRAUD'
@@ -113,16 +86,39 @@ export default function AIAlertsPage() {
   const pendingAlerts = filteredAlerts.filter((a) => a.status === 'PENDING')
   const acknowledgedAlerts = filteredAlerts.filter((a) => a.status === 'ACKNOWLEDGED')
 
-  const handleAcknowledge = (id: string) => {
-    setAlerts(alerts.map((a) => (a.id === id ? { ...a, status: 'ACKNOWLEDGED' } : a)))
+  const handleAcknowledge = async (id: string) => {
+    try {
+      await aiAlertsApi.acknowledge(id)
+      setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, status: 'ACKNOWLEDGED' as const } : a)))
+    } catch (e) {
+      console.error(e)
+    }
   }
 
-  const handleDismiss = (id: string) => {
-    setAlerts(alerts.map((a) => (a.id === id ? { ...a, status: 'DISMISSED' } : a)))
+  const handleDismiss = async (id: string) => {
+    try {
+      await aiAlertsApi.dismiss(id)
+      setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, status: 'DISMISSED' as const } : a)))
+    } catch (e) {
+      console.error(e)
+    }
   }
 
-  const handleEscalate = (id: string) => {
-    setAlerts(alerts.map((a) => (a.id === id ? { ...a, status: 'ESCALATED' } : a)))
+  const handleEscalate = async (id: string) => {
+    try {
+      await aiAlertsApi.escalate(id)
+      setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, status: 'ESCALATED' as const } : a)))
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    )
   }
 
   return (
@@ -205,13 +201,11 @@ export default function AIAlertsPage() {
 
                     {/* Entity Link */}
                     {alert.affectedEntity.type === 'MEMBER' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs h-7"
-                      >
-                        <LinkIcon className="w-3 h-3 mr-1" />
-                        View Member Profile
+                      <Button variant="ghost" size="sm" className="text-xs h-7" asChild>
+                        <Link href={`/dashboard/members/${alert.affectedEntity.id}`}>
+                          <LinkIcon className="w-3 h-3 mr-1" />
+                          View Member Profile
+                        </Link>
                       </Button>
                     )}
                   </div>

@@ -1,63 +1,97 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Download, Lock } from 'lucide-react'
 import { TrialBalance } from '@/lib/types/accounting'
-import { formatCurrency, formatDate } from '@/lib/utils/format'
+import { formatCurrency } from '@/lib/utils/formatters'
+import { glApi } from '@/lib/api'
+import { useToast } from '@/hooks/use-toast'
 
-const mockTrialBalance: TrialBalance[] = [
-  {
-    accountCode: '1101',
-    accountName: 'Cash in Hand',
-    openingDr: 200000,
-    openingCr: 0,
-    periodDr: 150000,
-    periodCr: 0,
-    closingDr: 350000,
-    closingCr: 0,
-  },
-  {
-    accountCode: '1102',
-    accountName: 'Bank Accounts',
-    openingDr: 800000,
-    openingCr: 0,
-    periodDr: 500000,
-    periodCr: 0,
-    closingDr: 1300000,
-    closingCr: 0,
-  },
-  {
-    accountCode: '2100',
-    accountName: 'Members Deposits',
+function mapGlRows(rows: any[]): TrialBalance[] {
+  return (rows || []).map(r => ({
+    accountCode: r.glCode,
+    accountName: r.glName,
     openingDr: 0,
-    openingCr: 1400000,
-    periodDr: 0,
-    periodCr: 300000,
-    closingDr: 0,
-    closingCr: 1700000,
-  },
-  {
-    accountCode: '4100',
-    accountName: 'Interest Income',
-    openingDr: 0,
-    openingCr: 300000,
-    periodDr: 0,
-    periodCr: 125600,
-    closingDr: 0,
-    closingCr: 425600,
-  },
-]
+    openingCr: 0,
+    periodDr: r.totalDebit ?? 0,
+    periodCr: r.totalCredit ?? 0,
+    closingDr: (r.net ?? 0) > 0 ? r.net : 0,
+    closingCr: (r.net ?? 0) < 0 ? -r.net : 0,
+  }))
+}
+
+function escapeCsv(val: string | number): string {
+  const s = String(val)
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`
+  return s
+}
+
+function getCurrentMonthRange() {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), 1)
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  return {
+    fromDate: start.toISOString().slice(0, 10),
+    toDate: end.toISOString().slice(0, 10),
+  }
+}
 
 export default function TrialBalancePage() {
-  const [fromDate, setFromDate] = useState('2025-01-01')
-  const [toDate, setToDate] = useState('2025-03-01')
+  const { toast } = useToast()
+  const { fromDate: defFrom, toDate: defTo } = getCurrentMonthRange()
+  const [fromDate, setFromDate] = useState(defFrom)
+  const [toDate, setToDate] = useState(defTo)
   const [isFrozen, setIsFrozen] = useState(false)
+  const [trialBalance, setTrialBalance] = useState<TrialBalance[]>([])
+  const [loading, setLoading] = useState(false)
 
-  const totalDr = mockTrialBalance.reduce((sum, tb) => sum + tb.closingDr, 0)
-  const totalCr = mockTrialBalance.reduce((sum, tb) => sum + tb.closingCr, 0)
+  const fetchReport = useCallback(() => {
+    setLoading(true)
+    glApi.trialBalance({ fromDate, toDate })
+      .then(r => setTrialBalance(r.rows?.length ? mapGlRows(r.rows) : []))
+      .catch(() => {
+        setTrialBalance([])
+        toast({ title: 'Error', description: 'Failed to load trial balance', variant: 'destructive' })
+      })
+      .finally(() => setLoading(false))
+  }, [fromDate, toDate, toast])
+
+  React.useEffect(() => {
+    fetchReport()
+  }, [fetchReport])
+
+  const handleExportExcel = () => {
+    const headers = ['Account Code', 'Account Name', 'Opening Dr', 'Opening Cr', 'Period Dr', 'Period Cr', 'Closing Dr', 'Closing Cr']
+    const rows = trialBalance.map(tb => [
+      tb.accountCode,
+      tb.accountName,
+      tb.openingDr,
+      tb.openingCr,
+      tb.periodDr,
+      tb.periodCr,
+      tb.closingDr,
+      tb.closingCr,
+    ])
+    const csvContent = [headers.map(escapeCsv).join(','), ...rows.map(r => r.map(escapeCsv).join(','))].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Trial_Balance_${fromDate}_to_${toDate}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast({ title: 'Exported', description: 'Trial balance downloaded as CSV (opens in Excel)' })
+  }
+
+  const handleExportPdf = () => {
+    window.print()
+  }
+
+  const totalDr = trialBalance.reduce((sum, tb) => sum + tb.closingDr, 0)
+  const totalCr = trialBalance.reduce((sum, tb) => sum + tb.closingCr, 0)
   const isBalanced = Math.abs(totalDr - totalCr) < 0.01
 
   return (
@@ -71,11 +105,11 @@ export default function TrialBalancePage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportPdf} disabled={trialBalance.length === 0}>
             <Download className="w-4 h-4" />
             PDF
           </Button>
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportExcel} disabled={trialBalance.length === 0}>
             <Download className="w-4 h-4" />
             Excel
           </Button>
@@ -94,7 +128,9 @@ export default function TrialBalancePage() {
             <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </div>
           <div className="flex items-end">
-            <Button className="w-full">Generate Report</Button>
+            <Button className="w-full" onClick={fetchReport} disabled={loading}>
+              {loading ? 'Loading...' : 'Generate Report'}
+            </Button>
           </div>
         </div>
       </Card>
@@ -116,7 +152,7 @@ export default function TrialBalancePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {mockTrialBalance.map((tb) => (
+              {(loading ? [] : trialBalance).map((tb) => (
                 <tr key={tb.accountCode} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-mono text-sm">{tb.accountCode}</td>
                   <td className="px-4 py-3 text-sm">{tb.accountName}</td>

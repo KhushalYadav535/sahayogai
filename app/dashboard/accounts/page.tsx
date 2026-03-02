@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
+import { sbApi, depositsApi } from '@/lib/api';
 import { Permission } from '@/lib/types/auth';
 import { SavingsAccount, FixedDeposit, SavingsAccountStatus } from '@/lib/types/account';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,82 +20,6 @@ import { Plus, TrendingUp, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Mock savings accounts
-const mockSavingsAccounts: SavingsAccount[] = [
-  {
-    id: '1',
-    accountNumber: 'SA-2024-0001',
-    memberId: '1',
-    tenantId: 'default',
-    status: SavingsAccountStatus.ACTIVE,
-    openingDate: new Date('2023-01-10'),
-    currentBalance: 125000,
-    minBalance: 500,
-    interestRate: 4.0,
-    interestAccrued: 5200,
-    lastInterestCreditDate: new Date('2024-09-30'),
-    isDormant: false,
-    lastTransactionDate: new Date('2024-11-20'),
-    createdAt: new Date('2023-01-10'),
-    updatedAt: new Date('2024-11-20'),
-    createdBy: 'admin',
-    updatedBy: 'admin',
-    isDeleted: false,
-  },
-  {
-    id: '2',
-    accountNumber: 'SA-2024-0002',
-    memberId: '2',
-    tenantId: 'default',
-    status: SavingsAccountStatus.ACTIVE,
-    openingDate: new Date('2023-03-15'),
-    currentBalance: 89000,
-    minBalance: 500,
-    interestRate: 4.0,
-    interestAccrued: 3800,
-    lastInterestCreditDate: new Date('2024-09-30'),
-    isDormant: false,
-    lastTransactionDate: new Date('2024-11-18'),
-    createdAt: new Date('2023-03-15'),
-    updatedAt: new Date('2024-11-18'),
-    createdBy: 'admin',
-    updatedBy: 'admin',
-    isDeleted: false,
-  },
-];
-
-// Mock fixed deposits
-const mockFixedDeposits: FixedDeposit[] = [
-  {
-    id: '1',
-    depositId: 'FDR-2024-0001',
-    memberId: '1',
-    tenantId: 'default',
-    depositType: 'FDR' as any,
-    principalAmount: 500000,
-    interestRate: 7.5,
-    tenure: 60,
-    openingDate: new Date('2024-01-15'),
-    maturityDate: new Date('2026-01-15'),
-    createdDate: new Date('2024-01-15'),
-    totalInterest: 187500,
-    maturityAmount: 687500,
-    interestFrequency: 'QUARTERLY' as any,
-    interestAccrued: 28125,
-    interestPaid: 0,
-    status: 'ACTIVE' as any,
-    isRenewed: false,
-    renewalCount: 0,
-    isTDSApplicable: true,
-    tdsAmount: 3750,
-    panProvided: true,
-    isSeniorCitizen: false,
-    createdAt: new Date('2024-01-15'),
-    updatedAt: new Date('2024-11-20'),
-    createdBy: 'admin',
-    updatedBy: 'admin',
-  },
-];
 
 const statusColors: Record<SavingsAccountStatus, string> = {
   [SavingsAccountStatus.ACTIVE]: 'bg-green-100 text-green-800 dark:bg-green-900',
@@ -103,11 +28,77 @@ const statusColors: Record<SavingsAccountStatus, string> = {
   [SavingsAccountStatus.CLOSED]: 'bg-gray-100 text-gray-800 dark:bg-gray-900',
 };
 
+function mapSbAccount(a: any): SavingsAccount & { member?: any } {
+  return {
+    id: a.id,
+    accountNumber: a.accountNumber,
+    memberId: a.memberId,
+    tenantId: a.tenantId,
+    status: (a.status?.toUpperCase() || 'ACTIVE') as SavingsAccountStatus,
+    openingDate: a.openedAt ? new Date(a.openedAt) : new Date(),
+    currentBalance: Number(a.balance) || 0,
+    minBalance: 500,
+    interestRate: Number(a.interestRate) || 4,
+    interestAccrued: 0,
+    lastInterestCreditDate: new Date(),
+    isDormant: false,
+    lastTransactionDate: new Date(),
+    createdAt: a.createdAt ? new Date(a.createdAt) : new Date(),
+    updatedAt: a.updatedAt ? new Date(a.updatedAt) : new Date(),
+    createdBy: 'admin',
+    updatedBy: 'admin',
+    isDeleted: false,
+    member: a.member,
+  };
+}
+
 export default function AccountsPage() {
   const { hasPermission } = useAuth();
   const router = useRouter();
-  const [savingsAccounts] = useState(mockSavingsAccounts);
-  const [fixedDeposits] = useState(mockFixedDeposits);
+  const [savingsAccounts, setSavingsAccounts] = useState<SavingsAccount[]>([]);
+  const [fixedDeposits, setFixedDeposits] = useState<FixedDeposit[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      sbApi.list(),
+      depositsApi.list({ depositType: 'fd', status: 'active' }),
+    ])
+      .then(([sbRes, depRes]) => {
+        setSavingsAccounts((sbRes.accounts || []).map(mapSbAccount));
+        setFixedDeposits((depRes.deposits || []).map((d: any) => ({
+          id: d.id,
+          depositId: d.depositNumber || d.id,
+          memberId: d.memberId,
+          tenantId: d.tenantId,
+          depositType: (d.depositType || 'FDR') as any,
+          principalAmount: Number(d.principal) || 0,
+          interestRate: Number(d.interestRate) || 0,
+          tenure: d.tenureMonths || 0,
+          openingDate: d.openedAt ? new Date(d.openedAt) : new Date(),
+          maturityDate: d.maturityDate ? new Date(d.maturityDate) : new Date(),
+          createdDate: d.createdAt ? new Date(d.createdAt) : new Date(),
+          totalInterest: 0,
+          maturityAmount: 0,
+          interestFrequency: 'QUARTERLY' as any,
+          interestAccrued: 0,
+          interestPaid: 0,
+          status: (d.status || 'ACTIVE') as any,
+          isRenewed: false,
+          renewalCount: 0,
+          isTDSApplicable: true,
+          tdsAmount: 0,
+          panProvided: true,
+          isSeniorCitizen: false,
+          createdAt: d.createdAt ? new Date(d.createdAt) : new Date(),
+          updatedAt: d.updatedAt ? new Date(d.updatedAt) : new Date(),
+          createdBy: 'admin',
+          updatedBy: 'admin',
+        })));
+      })
+      .catch(() => { setSavingsAccounts([]); setFixedDeposits([]); })
+      .finally(() => setLoading(false));
+  }, []);
 
   const totalSavingsBalance = savingsAccounts.reduce((sum, acc) => sum + acc.currentBalance, 0);
   const totalDepositAmount = fixedDeposits.reduce((sum, dep) => sum + dep.principalAmount, 0);
@@ -207,7 +198,7 @@ export default function AccountsPage() {
                     {savingsAccounts.map((account) => (
                       <TableRow key={account.id}>
                         <TableCell className="font-medium">{account.accountNumber}</TableCell>
-                        <TableCell>Member-{account.memberId}</TableCell>
+                        <TableCell>{account.member ? `${account.member.firstName} ${account.member.lastName}` : `Member-${account.memberId}`}</TableCell>
                         <TableCell className="font-semibold">
                           ₹{(account.currentBalance / 1000).toFixed(0)}K
                         </TableCell>

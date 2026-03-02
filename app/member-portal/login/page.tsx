@@ -1,183 +1,198 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, Suspense } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Globe } from 'lucide-react'
+import { setMemberToken } from '@/lib/api'
+import { useToast } from '@/hooks/use-toast'
+import { Phone, Calendar, Loader2, ShieldCheck } from 'lucide-react'
 
-export default function MemberPortalLoginPage() {
-  const [step, setStep] = useState<'phone' | 'otp'>('phone')
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+
+const labels = {
+  EN: {
+    title: 'Member Portal',
+    subtitle: 'Access your cooperative account',
+    phoneLabel: 'Registered Mobile Number',
+    phonePlaceholder: '10-digit mobile number',
+    dobLabel: 'Date of Birth',
+    loginBtn: 'Login',
+    loggingIn: 'Verifying…',
+    phoneHint: 'Mobile number registered with your society',
+    dobHint: 'As provided at the time of joining',
+  },
+  HI: {
+    title: 'सदस्य पोर्टल',
+    subtitle: 'अपना सहकारी खाता एक्सेस करें',
+    phoneLabel: 'पंजीकृत मोबाइल नंबर',
+    phonePlaceholder: '10 अंकों का नंबर',
+    dobLabel: 'जन्म तिथि',
+    loginBtn: 'लॉगिन करें',
+    loggingIn: 'जाँच हो रहा है…',
+    phoneHint: 'सोसायटी में दर्ज मोबाइल नंबर',
+    dobHint: 'सदस्यता के समय दी गई जन्म तिथि',
+  },
+  MR: {
+    title: 'सदस्य पोर्टल',
+    subtitle: 'आपले सहकारी खाते एक्सेस करा',
+    phoneLabel: 'नोंदणीकृत मोबाइल नंबर',
+    phonePlaceholder: '10 अंकी नंबर',
+    dobLabel: 'जन्मतारीख',
+    loginBtn: 'लॉगिन करा',
+    loggingIn: 'सत्यापन होत आहे…',
+    phoneHint: 'सोसायटीमध्ये नोंदवलेला मोबाइल नंबर',
+    dobHint: 'सभासदत्वाच्या वेळी दिलेली जन्मतारीख',
+  },
+}
+
+function MemberLoginContent() {
+  const { toast } = useToast()
+  const [lang, setLang] = useState<'EN' | 'HI' | 'MR'>('EN')
   const [phone, setPhone] = useState('')
-  const [otp, setOtp] = useState('')
-  const [language, setLanguage] = useState('EN')
-  const [timer, setTimer] = useState(0)
+  const [dob, setDob] = useState('')
+  const [loading, setLoading] = useState(false)
+  const t = labels[lang]
 
-  const handleSendOTP = () => {
-    if (phone.length === 10) {
-      setStep('otp')
-      setTimer(30)
-    }
-  }
+  const canLogin = phone.length === 10 && dob.length === 10 && !loading
 
-  const handleVerifyOTP = () => {
-    if (otp.length === 6) {
+  const handleLogin = async () => {
+    if (!canLogin) return
+    setLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/me/login-dob`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, dateOfBirth: dob }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        toast({ title: data.message || 'Login failed', variant: 'destructive' })
+        return
+      }
+      setMemberToken(data.token)
+      localStorage.setItem('sahayog_member_token', data.token)
+      localStorage.setItem('sahayog_member', JSON.stringify(data.member))
       window.location.href = '/member-portal/home'
+    } catch {
+      toast({ title: 'Connection error. Please try again.', variant: 'destructive' })
+    } finally {
+      setLoading(false)
     }
   }
-
-  React.useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (timer > 0) {
-      interval = setInterval(() => setTimer((t) => t - 1), 1000)
-    }
-    return () => clearInterval(interval)
-  }, [timer])
-
-  const labels: Record<string, Record<string, string>> = {
-    EN: {
-      title: 'Sahayog AI Member Portal',
-      subtitle: 'Access your cooperative account',
-      phone: 'Mobile Number',
-      sendOTP: 'Send OTP',
-      otp: 'Enter 6-digit OTP',
-      verify: 'Verify OTP',
-      resend: 'Resend OTP',
-    },
-    HI: {
-      title: 'सहायोग ऐ सदस्य पोर्टल',
-      subtitle: 'अपना सहकारी खाता एक्सेस करें',
-      phone: 'मोबाइल नंबर',
-      sendOTP: 'ओटीपी भेजें',
-      otp: '6 अंकों का ओटीपी दर्ज करें',
-      verify: 'ओटीपी सत्यापित करें',
-      resend: 'ओटीपी फिर से भेजें',
-    },
-    MR: {
-      title: 'सहायोग ऐ सदस्य पोर्टल',
-      subtitle: 'आपले सहकारी खाते एक्सेस करा',
-      phone: 'मोबाइल नंबर',
-      sendOTP: 'ओटीपी पाठवा',
-      otp: '6 अंकांचे ओटीपी प्रविष्ट करा',
-      verify: 'ओटीपी सत्यापित करा',
-      resend: 'ओटीपी पुन्हा पाठवा',
-    },
-  }
-
-  const t = labels[language]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md p-8 shadow-lg">
-        {/* Logo & Title */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm space-y-4">
+
+        {/* Logo */}
+        <div className="text-center">
+          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg">
             <span className="text-2xl font-bold text-primary-foreground">SA</span>
           </div>
-          <h1 className="text-2xl font-bold">{t.title}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t.title}</h1>
           <p className="text-sm text-muted-foreground mt-1">{t.subtitle}</p>
         </div>
 
         {/* Language Selector */}
-        <div className="flex gap-2 mb-6 border-b border-border pb-4">
-          {['EN', 'HI', 'MR'].map((lang) => (
+        <div className="flex gap-2">
+          {(['EN', 'HI', 'MR'] as const).map(l => (
             <button
-              key={lang}
-              onClick={() => setLanguage(lang)}
-              className={`flex-1 py-1.5 text-sm font-medium rounded transition ${
-                language === lang
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-foreground hover:bg-muted/80'
-              }`}
+              key={l}
+              onClick={() => setLang(l)}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${lang === l
+                  ? 'bg-primary text-primary-foreground shadow'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
             >
-              {lang === 'EN' ? 'English' : lang === 'HI' ? 'हिंदी' : 'मराठी'}
+              {l === 'EN' ? 'English' : l === 'HI' ? 'हिंदी' : 'मराठी'}
             </button>
           ))}
         </div>
 
-        {/* Phone Step */}
-        {step === 'phone' && (
-          <div className="space-y-4">
+        {/* Login Card */}
+        <Card className="p-6 shadow-lg border border-border/50">
+          <div className="space-y-5">
+
+            {/* Mobile Number */}
             <div>
-              <label className="text-sm font-medium mb-2 block">{t.phone}</label>
+              <label className="text-sm font-medium mb-1.5 flex items-center gap-1.5 block">
+                <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                {t.phoneLabel}
+              </label>
               <Input
                 type="tel"
-                placeholder="9876543210"
+                inputMode="numeric"
+                placeholder={t.phonePlaceholder}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value.slice(0, 10))}
-                maxLength={10}
-                className="text-lg text-center"
+                onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                onKeyDown={e => e.key === 'Enter' && canLogin && handleLogin()}
+                className="text-xl text-center font-mono tracking-widest h-12"
+                autoFocus
               />
-            </div>
-            <Button
-              onClick={handleSendOTP}
-              disabled={phone.length !== 10}
-              className="w-full"
-            >
-              {t.sendOTP}
-            </Button>
-          </div>
-        )}
-
-        {/* OTP Step */}
-        {step === 'otp' && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">{t.otp}</label>
-              <div className="flex gap-2">
-                {[0, 1, 2, 3, 4, 5].map((idx) => (
-                  <Input
-                    key={idx}
-                    type="text"
-                    maxLength={1}
-                    value={otp[idx] || ''}
-                    onChange={(e) => {
-                      const newOtp = otp.split('')
-                      newOtp[idx] = e.target.value
-                      setOtp(newOtp.join(''))
-                    }}
-                    className="w-12 h-12 text-center text-xl font-bold"
-                  />
-                ))}
-              </div>
-            </div>
-
-            <Button
-              onClick={handleVerifyOTP}
-              disabled={otp.length !== 6}
-              className="w-full"
-            >
-              {t.verify}
-            </Button>
-
-            <div className="text-center">
-              {timer > 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Resend in {timer}s
-                </p>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setStep('phone')
-                    setPhone('')
-                    setOtp('')
-                  }}
-                  className="text-xs"
-                >
-                  {t.resend}
-                </Button>
+              <p className="text-xs text-muted-foreground mt-1">{t.phoneHint}</p>
+              {phone.length > 0 && phone.length < 10 && (
+                <p className="text-xs text-amber-500 mt-0.5">{10 - phone.length} more digits needed</p>
               )}
             </div>
-          </div>
-        )}
 
-        {/* Footer */}
-        <p className="text-xs text-center text-muted-foreground mt-6">
-          Secure & Encrypted Connection
+            {/* Date of Birth */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 flex items-center gap-1.5 block">
+                <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                {t.dobLabel}
+              </label>
+              <Input
+                type="date"
+                value={dob}
+                onChange={e => setDob(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && canLogin && handleLogin()}
+                max={new Date().toISOString().split('T')[0]}
+                className="h-12 text-base"
+              />
+              <p className="text-xs text-muted-foreground mt-1">{t.dobHint}</p>
+            </div>
+
+            {/* Login Button */}
+            <Button
+              className="w-full h-12 text-base gap-2"
+              onClick={handleLogin}
+              disabled={!canLogin}
+            >
+              {loading
+                ? <><Loader2 className="w-4 h-4 animate-spin" />{t.loggingIn}</>
+                : <><ShieldCheck className="w-4 h-4" />{t.loginBtn}</>
+              }
+            </Button>
+
+            <p className="text-xs text-center text-muted-foreground">
+              🔒 Encrypted & Secure
+            </p>
+          </div>
+        </Card>
+
+        <p className="text-center text-xs text-muted-foreground">
+          Problems logging in? Contact your society manager.
         </p>
-      </Card>
+      </div>
     </div>
+  )
+}
+
+export default function MemberPortalLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
+        <div className="w-full max-w-sm p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-16 bg-muted rounded-2xl w-16 mx-auto" />
+            <div className="h-8 bg-muted rounded w-3/4 mx-auto" />
+            <div className="h-48 bg-muted rounded-xl" />
+          </div>
+        </div>
+      </div>
+    }>
+      <MemberLoginContent />
+    </Suspense>
   )
 }

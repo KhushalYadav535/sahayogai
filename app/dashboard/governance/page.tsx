@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Permission } from '@/lib/types/auth';
-import { ComplianceEvent, AGM, AGMStatus } from '@/lib/types/governance';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,94 +18,19 @@ import { AlertCircle, Calendar, CheckCircle, Eye, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Mock compliance events
-const mockComplianceEvents: ComplianceEvent[] = [
-  {
-    id: '1',
-    tenantId: 'default',
-    eventType: 'AGM',
-    title: 'Annual General Meeting',
-    dueDate: new Date('2024-12-31'),
-    description: 'Annual General Meeting for FY 2024',
-    responsibleRole: 'SECRETARY',
-    currentStatus: 'IN_PROGRESS',
-    alertSchedule: { t30Days: true, t15Days: true, t7Days: true, t1Day: true },
-    regulatoryReference: 'Cooperative Act Sec 70',
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-11-20'),
-  },
-  {
-    id: '2',
-    tenantId: 'default',
-    eventType: 'NABARD_RETURN',
-    title: 'NABARD Annual Return Filing',
-    dueDate: new Date('2025-01-31'),
-    description: 'Submit annual return to NABARD',
-    responsibleRole: 'ACCOUNTANT',
-    currentStatus: 'PENDING',
-    alertSchedule: { t30Days: true, t15Days: true, t7Days: true, t1Day: true },
-    regulatoryReference: 'NABARD Guidelines',
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-11-20'),
-  },
-  {
-    id: '3',
-    tenantId: 'default',
-    eventType: 'AUDIT',
-    title: 'Annual Statutory Audit',
-    dueDate: new Date('2025-03-31'),
-    description: 'Completion of statutory audit for FY 2024-25',
-    responsibleRole: 'AUDITOR',
-    currentStatus: 'PENDING',
-    alertSchedule: { t30Days: true, t15Days: true, t7Days: true, t1Day: true },
-    regulatoryReference: 'Cooperative Act Section 81',
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-11-20'),
-  },
-];
+import { governanceApi } from '@/lib/api';
 
-// Mock AGMs
-const mockAGMs: AGM[] = [
-  {
-    id: '1',
-    agmNumber: 25,
-    year: 2024,
-    tenantId: 'default',
-    scheduledDate: new Date('2024-12-15'),
-    venue: 'Community Hall, Nagpur',
-    status: AGMStatus.IN_PROGRESS,
-    agendaItems: [
-      {
-        id: '1',
-        agmId: '1',
-        sequence: 1,
-        title: 'Approval of Annual Report',
-        description: 'Review and approval of annual report for FY 2024',
-        proposedBy: 'President',
-        status: 'DISCUSSED',
-        createdAt: new Date('2024-11-01'),
-      },
-      {
-        id: '2',
-        agmId: '1',
-        sequence: 2,
-        title: 'Dividend Declaration',
-        description: 'Approve dividend distribution to members',
-        proposedBy: 'Finance Committee',
-        status: 'PENDING',
-        createdAt: new Date('2024-11-01'),
-      },
-    ],
-    attendees: [],
-    notices: {
-      noticeSentDate: new Date('2024-11-15'),
-      noticePeriodDays: 30,
-    },
-    minutesGenerated: false,
-    createdAt: new Date('2024-11-01'),
-    updatedAt: new Date('2024-11-20'),
-  },
-];
+
+const EVENT_TITLES: Record<string, string> = {
+  AGM: 'Annual General Meeting',
+  NABARD_RETURN: 'NABARD Annual Return Filing',
+  TDS_PAYMENT: 'TDS Payment',
+  TDS_26Q: 'TDS Return (26Q)',
+  AUDIT: 'Annual Statutory Audit',
+  BOD_ELECTION: 'BOD Election',
+  REGISTRAR_RETURN: 'Registrar Annual Return',
+};
+
 
 const complianceStatusColors: Record<string, string> = {
   PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900',
@@ -118,17 +42,34 @@ const complianceStatusColors: Record<string, string> = {
 export default function GovernancePage() {
   const { hasPermission } = useAuth();
   const router = useRouter();
-  const [complianceEvents] = useState(mockComplianceEvents);
-  const [agms] = useState(mockAGMs);
+  const [complianceEvents, setComplianceEvents] = useState<any[]>([]);
+  const [agms, setAgms] = useState<any[]>([]);
+  const [directors, setDirectors] = useState<any[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      governanceApi.complianceEvents.list({ from: new Date().toISOString().slice(0, 10), to: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10) }),
+      governanceApi.agm.list(),
+      governanceApi.bod.list(),
+    ]).then(([ev, a, b]) => {
+      const events = (ev as any).data || (ev as any).events || [];
+      const agmList = (a as any).data || (a as any).agms || [];
+      const dirList = (b as any).data || (b as any).directors || [];
+      setComplianceEvents(events.map((e: any) => ({ ...e, title: EVENT_TITLES[e.eventType] || e.eventType, dueDate: new Date(e.dueDate), currentStatus: (e.status || '').toUpperCase() })));
+      setAgms(agmList.map((g: any) => ({ ...g, agmNumber: g.id ? parseInt(g.id.slice(-2), 10) || 1 : 1, year: new Date(g.scheduledDate || 0).getFullYear(), agendaItems: g.agendaItems || [], status: g.status })));
+      setDirectors(dirList);
+    }).catch(() => {});
+  }, []);
 
   const upcomingDeadlines = complianceEvents
-    .filter((e) => e.currentStatus !== 'COMPLETED')
-    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
+    .filter((e: any) => (e.currentStatus || e.status) !== 'COMPLETED' && e.status !== 'completed')
+    .sort((a: any, b: any) => (a.dueDate instanceof Date ? a.dueDate : new Date(a.dueDate)).getTime() - (b.dueDate instanceof Date ? b.dueDate : new Date(b.dueDate)).getTime())
     .slice(0, 5);
 
-  const overdue = complianceEvents.filter((e) => {
+  const overdue = complianceEvents.filter((e: any) => {
     const today = new Date();
-    return e.dueDate < today && e.currentStatus !== 'COMPLETED';
+    const d = e.dueDate instanceof Date ? e.dueDate : new Date(e.dueDate);
+    return d < today && e.currentStatus !== 'COMPLETED' && e.status !== 'completed';
   });
 
   const canEditGovernance = hasPermission(Permission.GOVERNANCE_EDIT);
@@ -262,11 +203,11 @@ export default function GovernancePage() {
                         <TableCell>
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              complianceStatusColors[event.currentStatus] ||
+                              complianceStatusColors[event.currentStatus || event.status] ||
                               complianceStatusColors.PENDING
                             }`}
                           >
-                            {event.currentStatus}
+                            {event.currentStatus || event.status}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -291,25 +232,15 @@ export default function GovernancePage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {upcomingDeadlines.map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex items-center justify-between p-3 border rounded-lg border-border"
-                  >
+                {upcomingDeadlines.map((event: any) => (
+                  <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg border-border">
                     <div>
-                      <p className="font-medium text-foreground">{event.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {event.dueDate.toLocaleDateString()}
-                      </p>
+                      <p className="font-medium text-foreground">{event.title || event.eventType}</p>
+                      <p className="text-sm text-muted-foreground">{(event.dueDate instanceof Date ? event.dueDate : new Date(event.dueDate)).toLocaleDateString()}</p>
                     </div>
                     <div className="text-right">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          complianceStatusColors[event.currentStatus] ||
-                          complianceStatusColors.PENDING
-                        }`}
-                      >
-                        {event.currentStatus}
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${complianceStatusColors[event.currentStatus || event.status] || complianceStatusColors.PENDING}`}>
+                        {event.currentStatus || event.status}
                       </span>
                     </div>
                   </div>
@@ -330,36 +261,23 @@ export default function GovernancePage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {agms.map((agm) => (
-                  <div
-                    key={agm.id}
-                    className="border rounded-lg p-4 border-border hover:shadow-md transition-shadow"
-                  >
+                {agms.map((agm: any) => (
+                  <div key={agm.id} className="border rounded-lg p-4 border-border hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="font-semibold text-foreground">
-                          AGM #{agm.agmNumber} - {agm.year}
-                        </h3>
-                        <p className="text-sm text-muted-foreground mt-1">{agm.venue}</p>
+                        <h3 className="font-semibold text-foreground">AGM #{agm.agmNumber || agm.id?.slice(-2) || '1'} — {agm.year || (agm.scheduledDate ? new Date(agm.scheduledDate).getFullYear() : agm.fiscalYear)}</h3>
+                        <p className="text-sm text-muted-foreground mt-1">{agm.venue || agm.fiscalYear}</p>
                       </div>
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          agm.status === AGMStatus.COMPLETED
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900'
-                            : agm.status === AGMStatus.IN_PROGRESS
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900'
-                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900'
-                        }`}
-                      >
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${agm.status === 'conducted' || agm.status === 'minutes_approved' ? 'bg-green-100 text-green-800 dark:bg-green-900' : agm.status === 'scheduled' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900'}`}>
                         {agm.status}
                       </span>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        {agm.scheduledDate.toLocaleDateString()}
+                        {(agm.scheduledDate instanceof Date ? agm.scheduledDate : new Date(agm.scheduledDate || 0)).toLocaleDateString()}
                       </div>
-                      <div>{agm.agendaItems.length} agenda items</div>
+                      <div>{(agm.agendaItems?.length || 0)} agenda items</div>
                     </div>
                     <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/governance/agm/${agm.id}`)}>
                       View Details
@@ -376,14 +294,26 @@ export default function GovernancePage() {
           <Card>
             <CardHeader>
               <CardTitle>Board of Directors</CardTitle>
-              <CardDescription>
-                Current board members and their terms
-              </CardDescription>
+              <CardDescription>Current board members and their terms</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <p>Board management features coming soon</p>
-              </div>
+              {directors.length > 0 ? (
+                <div className="space-y-3">
+                  {directors.map((d: any) => (
+                    <div key={d.id} className="flex justify-between items-center p-3 border rounded-lg border-border">
+                      <div>
+                        <p className="font-medium">{d.name}</p>
+                        <p className="text-sm text-muted-foreground">{d.designation} · Term: {new Date(d.termStart).toLocaleDateString()} – {new Date(d.termEnd).toLocaleDateString()}</p>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded ${d.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{d.status}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No BOD members. Add directors to get started.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

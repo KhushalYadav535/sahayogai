@@ -19,7 +19,7 @@ export enum ApprovalStatus {
 
 export interface ApprovalItem {
   id: string
-  type: ApprovalType
+  type: ApprovalType | string
   status: ApprovalStatus
   description: string
   makerName: string
@@ -29,6 +29,7 @@ export interface ApprovalItem {
   slaDeadline: Date
   entityId: string
   entityType: string
+  source?: 'voucher' | 'loan_application'
   diffData?: Record<string, any>
   comments?: string
   rejectionReason?: string

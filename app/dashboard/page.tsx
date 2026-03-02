@@ -1,44 +1,72 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { UserRole } from '@/lib/types/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Banknote, Wallet, TrendingUp } from 'lucide-react';
+import { dashboardApi, setApiToken } from '@/lib/api';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const [stats, setStats] = useState<{ memberCount: number; activeLoansOutstanding: number; totalSavings: number; totalDeposits: number } | null>(null);
+  const [activities, setActivities] = useState<{ id: string; type: string; category: string; amount: number; memberName: string; processedAt: string }[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const kpiCards = [
-    {
-      title: 'Total Members',
-      value: '2,456',
-      icon: <Users className="w-8 h-8" />,
-      change: '+12% from last month',
-      color: 'text-blue-600 dark:text-blue-400',
-    },
-    {
-      title: 'Active Loans',
-      value: '₹45,23,000',
-      icon: <Banknote className="w-8 h-8" />,
-      change: '+8% from last month',
-      color: 'text-green-600 dark:text-green-400',
-    },
-    {
-      title: 'Total Savings',
-      value: '₹89,12,000',
-      icon: <Wallet className="w-8 h-8" />,
-      change: '+15% from last month',
-      color: 'text-purple-600 dark:text-purple-400',
-    },
-    {
-      title: 'Total Deposits',
-      value: '₹56,78,000',
-      icon: <TrendingUp className="w-8 h-8" />,
-      change: '+5% from last month',
-      color: 'text-orange-600 dark:text-orange-400',
-    },
-  ];
+  useEffect(() => {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('sahayog-token') : null;
+    if (token) setApiToken(token);
+    if (!user?.tenantId) {
+      setLoading(false);
+      return;
+    }
+    Promise.all([dashboardApi.getStats(token || undefined), dashboardApi.getActivity(10, token || undefined)])
+      .then(([statsRes, actRes]) => {
+        if (statsRes.stats) setStats(statsRes.stats);
+        if (actRes.activities) setActivities(actRes.activities);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [user?.tenantId]);
+
+  const kpiCards = stats
+    ? [
+        {
+          title: 'Total Members',
+          value: stats.memberCount.toLocaleString('en-IN'),
+          icon: <Users className="w-8 h-8" />,
+          change: '',
+          color: 'text-blue-600 dark:text-blue-400',
+        },
+        {
+          title: 'Active Loans',
+          value: formatCurrency(stats.activeLoansOutstanding, 0),
+          icon: <Banknote className="w-8 h-8" />,
+          change: '',
+          color: 'text-green-600 dark:text-green-400',
+        },
+        {
+          title: 'Total Savings',
+          value: formatCurrency(stats.totalSavings, 0),
+          icon: <Wallet className="w-8 h-8" />,
+          change: '',
+          color: 'text-purple-600 dark:text-purple-400',
+        },
+        {
+          title: 'Total Deposits',
+          value: formatCurrency(stats.totalDeposits, 0),
+          icon: <TrendingUp className="w-8 h-8" />,
+          change: '',
+          color: 'text-orange-600 dark:text-orange-400',
+        },
+      ]
+    : [
+        { title: 'Total Members', value: '—', icon: <Users className="w-8 h-8" />, change: '', color: 'text-blue-600 dark:text-blue-400' },
+        { title: 'Active Loans', value: '—', icon: <Banknote className="w-8 h-8" />, change: '', color: 'text-green-600 dark:text-green-400' },
+        { title: 'Total Savings', value: '—', icon: <Wallet className="w-8 h-8" />, change: '', color: 'text-purple-600 dark:text-purple-400' },
+        { title: 'Total Deposits', value: '—', icon: <TrendingUp className="w-8 h-8" />, change: '', color: 'text-orange-600 dark:text-orange-400' },
+      ];
 
   const roleGreeting: Record<UserRole, string> = {
     [UserRole.PLATFORM_ADMIN]: 'Platform Administration Dashboard',
@@ -85,9 +113,7 @@ export default function DashboardPage() {
               <div className="text-2xl font-bold text-foreground mb-1">
                 {card.value}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {card.change}
-              </p>
+              {card.change && <p className="text-xs text-muted-foreground">{card.change}</p>}
             </CardContent>
           </Card>
         ))}
@@ -103,27 +129,37 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {[1, 2, 3, 4].map((index) => (
-              <div
-                key={index}
-                className="flex items-center gap-4 pb-4 border-b border-border last:border-0"
-              >
-                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">
-                    Member Deposit Received
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    ₹5,000 from Rajesh Kumar
-                  </p>
-                </div>
-                <div className="text-sm font-semibold text-green-600 dark:text-green-400">
-                  +₹5,000
-                </div>
-              </div>
-            ))}
+            {loading ? (
+              <p className="text-sm text-muted-foreground py-4">Loading...</p>
+            ) : activities.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">No recent transactions</p>
+            ) : (
+              activities.map((a) => {
+                const label = a.category === 'deposit' ? 'Member Deposit' : a.category === 'withdrawal' ? 'Withdrawal' : a.category === 'transfer' ? 'Transfer' : a.category === 'interest' ? 'Interest' : a.category === 'emi' ? 'EMI Payment' : a.category;
+                const isCredit = a.type === 'credit';
+                return (
+                  <div
+                    key={a.id}
+                    className="flex items-center gap-4 pb-4 border-b border-border last:border-0"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">
+                        {label}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatCurrency(a.amount, 0)} from {a.memberName}
+                      </p>
+                    </div>
+                    <div className={`text-sm font-semibold ${isCredit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {isCredit ? '+' : '-'}{formatCurrency(a.amount, 0)}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </CardContent>
       </Card>

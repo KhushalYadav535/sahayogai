@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
+import { membersApi } from '@/lib/api';
 import { Permission, UserRole } from '@/lib/types/auth';
 import { Member, MemberStatus, MemberCategory } from '@/lib/types/member';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,71 +20,39 @@ import { Plus, Search, FileText, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Mock data
-const mockMembers: Member[] = [
-  {
-    id: '1',
-    memberId: 'MEM-2024-001',
-    tenantId: 'default',
-    firstName: 'Rajesh',
-    lastName: 'Kumar',
-    dateOfBirth: new Date('1980-01-15'),
-    gender: 'M',
-    mobileNumber: '+91-9876543210',
-    email: 'rajesh@example.com',
-    permanentAddress: '123 Main St, Village',
-    city: 'Nagpur',
-    state: 'Maharashtra',
-    pincode: '440001',
-    occupation: 'Farmer',
-    incomeRange: '2-5 Lakhs',
-    status: MemberStatus.ACTIVE,
+function mapApiMember(m: any): Member {
+  return {
+    id: m.id,
+    memberId: m.memberNumber || m.memberId,
+    tenantId: m.tenantId,
+    firstName: m.firstName,
+    lastName: m.lastName,
+    dateOfBirth: m.dateOfBirth ? new Date(m.dateOfBirth) : new Date(),
+    gender: (m.gender === 'male' ? 'M' : m.gender === 'female' ? 'F' : 'O') as 'M' | 'F' | 'O',
+    mobileNumber: m.phone || '',
+    email: m.email,
+    permanentAddress: m.address || '',
+    city: m.district || '',
+    state: m.state || '',
+    pincode: m.pincode || '',
+    occupation: m.occupation || '',
+    incomeRange: '',
+    status: (m.status?.toUpperCase() || 'ACTIVE') as MemberStatus,
     category: MemberCategory.REGULAR,
-    joinDate: new Date('2023-01-10'),
-    sharesHeld: 10,
-    totalShareAmount: 1000,
-    kycStatus: 'VERIFIED' as any,
+    joinDate: m.joinDate ? new Date(m.joinDate) : new Date(),
+    sharesHeld: 0,
+    totalShareAmount: 0,
+    kycStatus: (m.kycStatus?.toUpperCase() || 'PENDING') as any,
     kycMode: 'AADHAAR_OTP' as any,
-    kycVerifiedDate: new Date('2023-01-10'),
+    kycVerifiedDate: m.kycVerifiedAt ? new Date(m.kycVerifiedAt) : undefined,
     nominees: [],
-    createdAt: new Date('2023-01-10'),
-    updatedAt: new Date('2023-01-10'),
+    createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
+    updatedAt: m.updatedAt ? new Date(m.updatedAt) : new Date(),
     createdBy: 'admin',
     updatedBy: 'admin',
     isDeleted: false,
-  },
-  {
-    id: '2',
-    memberId: 'MEM-2024-002',
-    tenantId: 'default',
-    firstName: 'Priya',
-    lastName: 'Sharma',
-    dateOfBirth: new Date('1990-03-20'),
-    gender: 'F',
-    mobileNumber: '+91-8765432109',
-    email: 'priya@example.com',
-    permanentAddress: '456 Oak Ave, Town',
-    city: 'Pune',
-    state: 'Maharashtra',
-    pincode: '411001',
-    occupation: 'Teacher',
-    incomeRange: '5-10 Lakhs',
-    status: MemberStatus.ACTIVE,
-    category: MemberCategory.REGULAR,
-    joinDate: new Date('2023-03-15'),
-    sharesHeld: 15,
-    totalShareAmount: 1500,
-    kycStatus: 'VERIFIED' as any,
-    kycMode: 'AADHAAR_OTP' as any,
-    kycVerifiedDate: new Date('2023-03-15'),
-    nominees: [],
-    createdAt: new Date('2023-03-15'),
-    updatedAt: new Date('2023-03-15'),
-    createdBy: 'admin',
-    updatedBy: 'admin',
-    isDeleted: false,
-  },
-];
+  };
+}
 
 const statusColors: Record<MemberStatus, string> = {
   [MemberStatus.ACTIVE]: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
@@ -95,17 +64,26 @@ const statusColors: Record<MemberStatus, string> = {
 };
 
 export default function MembersPage() {
-  const { hasPermission, hasRole } = useAuth();
+  const { hasPermission } = useAuth();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
-  const [members, setMembers] = useState(mockMembers);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    membersApi.list()
+      .then(r => setMembers((r.members || []).map(mapApiMember)))
+      .catch(() => setMembers([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filteredMembers = members.filter(
     (member) =>
+      !searchTerm ||
       member.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.memberId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.mobileNumber.includes(searchTerm)
+      (member.memberId && member.memberId.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (member.mobileNumber && member.mobileNumber.includes(searchTerm))
   );
 
   const canCreate = hasPermission(Permission.MEMBER_CREATE);
@@ -156,6 +134,7 @@ export default function MembersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {loading && <p className="text-sm text-muted-foreground py-4">Loading members...</p>}
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>

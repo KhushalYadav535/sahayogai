@@ -1,0 +1,14 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "loading": "Loading..."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "members": "Members",
+    "loans": "Loans",
+    "accounts": "Accounts"
+  }
+}

@@ -81,7 +81,22 @@ export default function MemberRegistrationPage() {
         return;
       }
 
-      // TODO: Submit to API
+      const { membersApi } = await import('@/lib/api');
+      const payload = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender?.toLowerCase() === 'm' ? 'male' : formData.gender?.toLowerCase() === 'f' ? 'female' : 'other',
+        phone: formData.mobileNumber,
+        email: formData.email,
+        address: formData.permanentAddress,
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode,
+        district: formData.city,
+        occupation: formData.occupation,
+      };
+      await membersApi.create(payload);
       toast({
         title: 'Success',
         description: 'Member registered successfully',

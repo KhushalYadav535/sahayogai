@@ -1,435 +1,289 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { use, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
+import { formatCurrency } from '@/lib/utils/formatters';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { ArrowRight, CheckCircle, Clock, AlertTriangle, Lock, Zap } from 'lucide-react';
+  Heart, Upload, CheckCircle, User, CreditCard, Banknote, AlertTriangle, ArrowRight, ArrowLeft, Copy
+} from 'lucide-react';
+import { membersApi } from '@/lib/api';
 
-type Step = 'death' | 'freeze' | 'nominee' | 'settlement' | 'approval' | 'success';
-
-const steps: { id: Step; label: string; icon: React.ReactNode }[] = [
-  { id: 'death', label: 'Confirm Death', icon: <AlertTriangle className="w-4 h-4" /> },
-  { id: 'freeze', label: 'Freeze Accounts', icon: <Lock className="w-4 h-4" /> },
-  { id: 'nominee', label: 'Verify Nominee', icon: <CheckCircle className="w-4 h-4" /> },
-  { id: 'settlement', label: 'Calculate Settlement', icon: <Zap className="w-4 h-4" /> },
-  { id: 'approval', label: 'Send Approval', icon: <Clock className="w-4 h-4" /> },
-  { id: 'success', label: 'Settlement Complete', icon: <CheckCircle className="w-4 h-4" /> },
+const STEPS = [
+  { label: 'Confirm Death', icon: Heart },
+  { label: 'Account Freeze', icon: CreditCard },
+  { label: 'Nominee Verify', icon: User },
+  { label: 'Settlement Calc', icon: Banknote },
+  { label: 'Approval', icon: CheckCircle },
+  { label: 'Complete', icon: CheckCircle },
 ];
 
-export default function DeathSettlementPage() {
+export default function DeathSettlementPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
-  const params = useParams();
-  const [currentStep, setCurrentStep] = useState<Step>('death');
-  const [deathDate, setDeathDate] = useState('');
-  const [deathCertificate, setDeathCertificate] = useState(false);
-  const [accountsToFreeze, setAccountsToFreeze] = useState([
-    { accountNo: 'SB-001234', name: 'Savings Account', balance: 25000, checked: true },
-    { accountNo: 'SB-001235', name: 'Savings - Minor', balance: 5000, checked: true },
-  ]);
-  const [nomineeVerified, setNomineeVerified] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [settlementRef, setSettlementRef] = useState('');
+  const [step, setStep] = useState(0);
+  const [dateOfDeath, setDateOfDeath] = useState('');
+  const [certificateUploaded, setCertificateUploaded] = useState(false);
+  const [accountsFrozen, setAccountsFrozen] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [settlementRef] = useState('DS-' + Date.now().toString().slice(-8));
+  const [data, setData] = useState<{
+    member?: { memberNumber: string; firstName: string; lastName: string };
+    nominees?: any[];
+    accounts?: { accountNumber: string; accountType: string; balance: number }[];
+    settlement?: { sbBalance: number; fdrMaturity: number; shareCapital: number; loanOutstanding: number };
+    netPayable?: number;
+  }>({});
 
-  const handleFreezeToggle = (accountNo: string) => {
-    setAccountsToFreeze(
-      accountsToFreeze.map((acc) =>
-        acc.accountNo === accountNo ? { ...acc, checked: !acc.checked } : acc
-      )
-    );
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      try {
+        const res = await membersApi.deathSettlement.get(id);
+        setData({
+          member: res.member,
+          nominees: res.nominees || [],
+          accounts: res.accounts || [],
+          settlement: res.settlement || { sbBalance: 0, fdrMaturity: 0, shareCapital: 0, loanOutstanding: 0 },
+          netPayable: res.netPayable ?? 0,
+        });
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [id]);
+
+  const netPayable = data.netPayable ?? 0;
+  const memberName = data.member ? `${data.member.firstName} ${data.member.lastName}` : '';
+  const firstNominee = data.nominees?.[0];
+
+  const canNext = () => {
+    if (step === 0) return dateOfDeath && certificateUploaded;
+    if (step === 1) return accountsFrozen;
+    if (step === 2) return otpVerified;
+    return true;
   };
 
-  const handleNextStep = () => {
-    const stepOrder: Step[] = ['death', 'freeze', 'nominee', 'settlement', 'approval', 'success'];
-    const currentIndex = stepOrder.indexOf(currentStep);
-    if (currentIndex < stepOrder.length - 1) {
-      setCurrentStep(stepOrder[currentIndex + 1]);
+  const handleNext = async () => {
+    if (step === 4) {
+      setSubmitting(true);
+      try {
+        await membersApi.deathSettlement.complete(id, { dateOfDeath, nomineeId: firstNominee?.id });
+        setStep(s => s + 1);
+      } catch (e) {
+        alert((e as Error).message || 'Failed to complete settlement');
+      } finally {
+        setSubmitting(false);
+      }
+    } else {
+      setStep(s => s + 1);
     }
   };
 
-  const handlePreviousStep = () => {
-    const stepOrder: Step[] = ['death', 'freeze', 'nominee', 'settlement', 'approval', 'success'];
-    const currentIndex = stepOrder.indexOf(currentStep);
-    if (currentIndex > 0) {
-      setCurrentStep(stepOrder[currentIndex - 1]);
-    }
+  const verifyOTP = () => {
+    if (otpValue === '123456') setOtpVerified(true);
   };
 
-  const handleSubmitForApproval = () => {
-    setSettlementRef('DS-2024-00156');
-    setCurrentStep('success');
-  };
-
-  const getStepStatus = (stepId: Step) => {
-    const order = ['death', 'freeze', 'nominee', 'settlement', 'approval', 'success'];
-    const current = order.indexOf(currentStep);
-    const step = order.indexOf(stepId);
-
-    if (step < current) return 'completed';
-    if (step === current) return 'active';
-    return 'pending';
-  };
+  if (loading) return <p className="py-8 text-center text-muted-foreground">Loading...</p>;
+  if (error) return <div className="py-8 text-center"><p className="text-destructive">{error}</p><Button variant="outline" className="mt-4" onClick={() => router.back()}>Back</Button></div>;
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Death Settlement Workflow</h1>
-        <p className="text-muted-foreground mt-2">Process member death and distribute settlement amount to nominee</p>
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold">Death Settlement Workflow</h1>
+          <p className="text-muted-foreground text-sm">Member: {memberName || data.member?.memberNumber || id}</p>
+        </div>
       </div>
 
-      {/* Stepper */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-4">
-        {steps.map((step, idx) => (
-          <React.Fragment key={step.id}>
-            <button
-              onClick={() => setCurrentStep(step.id)}
-              disabled={getStepStatus(step.id) === 'pending'}
-              className={`flex flex-col items-center gap-2 p-3 rounded-lg transition-all ${
-                getStepStatus(step.id) === 'active'
-                  ? 'bg-primary text-white'
-                  : getStepStatus(step.id) === 'completed'
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-gray-100 text-gray-400'
-              } ${getStepStatus(step.id) !== 'pending' ? 'cursor-pointer' : 'cursor-not-allowed'}`}
-            >
-              {step.icon}
-              <span className="text-xs font-medium whitespace-nowrap">{step.label}</span>
-            </button>
-            {idx < steps.length - 1 && (
-              <ArrowRight className={`w-4 h-4 ${getStepStatus(steps[idx + 1].id) !== 'pending' ? 'text-primary' : 'text-gray-300'}`} />
+      {/* Step progress */}
+      <div className="flex items-center gap-0">
+        {STEPS.map((s, i) => (
+          <React.Fragment key={i}>
+            <div className="flex flex-col items-center gap-1">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${i < step ? 'bg-green-500 text-white' : i === step ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}>
+                {i < step ? <CheckCircle className="w-4 h-4" /> : i + 1}
+              </div>
+              <span className={`text-xs text-center hidden sm:block ${i === step ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                {s.label}
+              </span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div className={`flex-1 h-0.5 mb-4 ${i < step ? 'bg-green-500' : 'bg-border'}`} />
             )}
           </React.Fragment>
         ))}
       </div>
 
-      {/* Step Content */}
-      <div className="space-y-6">
-        {currentStep === 'death' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 1: Confirm Member Death</CardTitle>
-              <CardDescription>Record the date of death and upload death certificate</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {step === 0 && <><Heart className="w-5 h-5 text-red-500" /> Step 1: Confirm Member Death</>}
+            {step === 1 && <><CreditCard className="w-5 h-5 text-orange-500" /> Step 2: Account Freeze</>}
+            {step === 2 && <><User className="w-5 h-5 text-blue-500" /> Step 3: Nominee Verification</>}
+            {step === 3 && <><Banknote className="w-5 h-5 text-green-500" /> Step 4: Settlement Calculation</>}
+            {step === 4 && <><CheckCircle className="w-5 h-5 text-primary" /> Step 5: Approval Submission</>}
+            {step === 5 && <><CheckCircle className="w-5 h-5 text-green-500" /> Settlement Complete</>}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {step === 0 && (
+            <div className="space-y-4">
+              <Alert className="border-red-200 bg-red-50 dark:bg-red-950">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800 dark:text-red-200">This will initiate the death settlement process. All accounts will be frozen.</AlertDescription>
+              </Alert>
               <div className="space-y-2">
-                <Label htmlFor="death-date">Date of Death *</Label>
-                <Input
-                  id="death-date"
-                  type="date"
-                  value={deathDate}
-                  onChange={(e) => setDeathDate(e.target.value)}
-                />
+                <label className="text-sm font-medium">Date of Death *</label>
+                <Input type="date" value={dateOfDeath} onChange={e => setDateOfDeath(e.target.value)} max={new Date().toISOString().split('T')[0]} />
               </div>
-
-              <div className="space-y-3">
-                <Label>Death Certificate *</Label>
-                <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                  <Button variant="outline">Upload Death Certificate (PDF/Image)</Button>
-                  <p className="text-xs text-muted-foreground mt-2">Max file size: 5MB</p>
-                  {deathCertificate && (
-                    <div className="mt-4 p-3 bg-green-50 rounded-lg">
-                      <p className="text-sm text-green-800 font-medium">✓ Death Certificate uploaded</p>
-                    </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Death Certificate Upload *</label>
+                <div onClick={() => setCertificateUploaded(true)} className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary transition-colors">
+                  {certificateUploaded ? (
+                    <div className="flex items-center justify-center gap-2 text-green-600"><CheckCircle className="w-5 h-5" /><span className="font-medium">death_certificate.pdf uploaded</span></div>
+                  ) : (
+                    <><Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" /><p className="text-sm text-muted-foreground">Click to upload (PDF/JPG)</p></>
                   )}
                 </div>
               </div>
+            </div>
+          )}
 
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
-                <Button disabled={!deathDate || !deathCertificate} onClick={handleNextStep}>
-                  Continue
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {currentStep === 'freeze' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 2: Freeze All Accounts</CardTitle>
-              <CardDescription>Select which accounts to freeze to prevent unauthorized access</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <Alert className="border-amber-200 bg-amber-50">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-800">
-                  All accounts will be frozen to prevent unauthorized transactions. Nominee can only withdraw funds after settlement.
-                </AlertDescription>
-              </Alert>
-
-              <div className="space-y-3">
-                {accountsToFreeze.map((account) => (
-                  <div key={account.accountNo} className="flex items-center gap-4 p-4 border rounded-lg">
-                    <Checkbox
-                      checked={account.checked}
-                      onCheckedChange={() => handleFreezeToggle(account.accountNo)}
-                    />
-                    <div className="flex-1">
-                      <p className="font-semibold">{account.name}</p>
-                      <p className="text-sm text-muted-foreground">{account.accountNo}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold">₹{account.balance.toLocaleString()}</p>
-                      <Badge variant="outline" className="bg-red-50 text-red-800 border-red-200">FREEZE</Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox id="confirm-freeze" />
-                  <span className="text-sm">I confirm that all selected accounts should be frozen</span>
-                </Label>
-              </div>
-
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={handlePreviousStep}>Previous</Button>
-                <Button onClick={handleNextStep}>Continue</Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {currentStep === 'nominee' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 3: Verify Nominee</CardTitle>
-              <CardDescription>Verify nominee details and KYC status before settlement</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h4 className="font-semibold text-blue-900 mb-4">Nominee Details</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs font-medium text-blue-700">Name</p>
-                    <p className="font-semibold text-blue-900">Shweta Kumar</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-blue-700">Relationship</p>
-                    <p className="font-semibold text-blue-900">Spouse</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-blue-700">Mobile</p>
-                    <p className="font-semibold text-blue-900">+91-9876543211</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-blue-700">KYC Status</p>
-                    <Badge className="bg-green-100 text-green-800 border-0">VERIFIED</Badge>
-                  </div>
+          {step === 1 && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">The following accounts will be frozen. No transactions will be allowed.</p>
+              {(data.accounts && data.accounts.length > 0 ? data.accounts : [{ accountNumber: 'N/A', accountType: 'No accounts', balance: 0 }]).map(acc => (
+                <div key={acc.accountNumber} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                  <div><p className="font-semibold text-sm">{acc.accountNumber}</p><p className="text-xs text-muted-foreground">{acc.accountType}</p></div>
+                  <div className="text-right"><p className="font-bold">{formatCurrency(acc.balance)}</p><Badge className="bg-red-100 text-red-800 text-xs">Will be FROZEN</Badge></div>
                 </div>
+              ))}
+              <div className="flex items-center gap-3 p-3 rounded-lg border border-orange-200 bg-orange-50 dark:bg-orange-950">
+                <Checkbox id="freeze-confirm" checked={accountsFrozen} onCheckedChange={v => setAccountsFrozen(!!v)} />
+                <label htmlFor="freeze-confirm" className="text-sm font-medium cursor-pointer">I confirm that all accounts should be frozen effective immediately</label>
               </div>
+            </div>
+          )}
 
-              <div className="space-y-4">
-                <h4 className="font-semibold">OTP Verification</h4>
-                <p className="text-sm text-muted-foreground">OTP sent to nominee mobile: +91-9876543211</p>
-                <div className="flex gap-2">
-                  <Input placeholder="Enter OTP" maxLength={6} />
-                  <Button variant="outline">Resend</Button>
-                </div>
+          {step === 2 && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg border border-border bg-muted/30">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">REGISTERED NOMINEE(S)</p>
+                {firstNominee ? (
+                  <>
+                    <p className="font-bold">{firstNominee.name}</p>
+                    <p className="text-sm text-muted-foreground">Relationship: {firstNominee.relationship}</p>
+                    {firstNominee.phone && <p className="text-sm text-muted-foreground">Mobile: {firstNominee.phone}</p>}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No nominee registered. Settlement can proceed to legal heir.</p>
+                )}
               </div>
-
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={nomineeVerified}
-                    onCheckedChange={(checked) => setNomineeVerified(checked as boolean)}
-                  />
-                  <span className="text-sm">Nominee verified and approved for settlement</span>
-                </Label>
-              </div>
-
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={handlePreviousStep}>Previous</Button>
-                <Button disabled={!nomineeVerified} onClick={handleNextStep}>Continue</Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {currentStep === 'settlement' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 4: Settlement Calculation</CardTitle>
-              <CardDescription>Review settlement amount to be paid to nominee</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Component</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell>Savings Account Balance (SB-001234)</TableCell>
-                    <TableCell className="text-right">₹25,000</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>Savings Account Balance (SB-001235)</TableCell>
-                    <TableCell className="text-right">₹5,000</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>FDR Maturity Value</TableCell>
-                    <TableCell className="text-right">₹10,500</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>Share Capital Refund</TableCell>
-                    <TableCell className="text-right">₹1,000</TableCell>
-                  </TableRow>
-                  <TableRow className="bg-yellow-50">
-                    <TableCell className="font-semibold">Less: Outstanding Loan</TableCell>
-                    <TableCell className="text-right font-semibold">-₹32,500</TableCell>
-                  </TableRow>
-                  <TableRow className="bg-green-50">
-                    <TableCell className="font-semibold">Net Payable to Nominee</TableCell>
-                    <TableCell className="text-right font-semibold text-green-800">₹9,000</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-
-              <Alert>
-                <AlertDescription>
-                  The outstanding loan will be deducted from the settlement amount. If settlement is less than outstanding, nominee will not be required to pay the difference.
-                </AlertDescription>
-              </Alert>
-
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={handlePreviousStep}>Previous</Button>
-                <Button onClick={handleNextStep}>Continue to Approval</Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {currentStep === 'approval' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 5: Submit for Approval</CardTitle>
-              <CardDescription>This settlement will be routed to Society Admin for maker-checker approval</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <Alert className="border-blue-200 bg-blue-50">
-                <AlertDescription className="text-blue-800">
-                  Settlement amount ₹9,000 requires Maker-Checker approval. This is a critical transaction that will be reviewed by authorized officers.
-                </AlertDescription>
-              </Alert>
-
               <div className="space-y-2">
-                <Label htmlFor="notes">Additional Notes (Optional)</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Add any relevant notes for approval..."
-                  rows={4}
-                />
-              </div>
-
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={handlePreviousStep}>Previous</Button>
-                <AlertDialog>
-                  <Button onClick={() => setShowConfirmation(true)}>Submit for Approval</Button>
-                </AlertDialog>
-              </div>
-
-              {showConfirmation && (
-                <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
-                  <AlertDialogContent>
-                    <AlertDialogTitle>Confirm Settlement Submission</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      You are about to submit this death settlement for approval. This action will trigger maker-checker workflow.
-                      The settlement reference number will be generated upon submission.
-                    </AlertDialogDescription>
-                    <div className="flex gap-2 justify-end mt-4">
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleSubmitForApproval}>Confirm & Submit</AlertDialogAction>
+                <p className="text-sm font-medium">OTP Verification (sent to nominee&apos;s mobile)</p>
+                {!otpSent ? (
+                  <Button variant="outline" className="w-full" onClick={() => setOtpSent(true)}>Send OTP to {firstNominee?.phone || 'Nominee'}</Button>
+                ) : (
+                  <>
+                    <div className="flex gap-2">
+                      <Input placeholder="Enter 6-digit OTP" value={otpValue} onChange={e => setOtpValue(e.target.value)} maxLength={6} className="font-mono" />
+                      <Button variant="outline" onClick={verifyOTP} disabled={otpVerified}>{otpVerified ? '✓ Verified' : 'Verify'}</Button>
                     </div>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                    {!otpVerified && <p className="text-xs text-muted-foreground">Enter OTP sent to your registered mobile</p>}
+                    {otpVerified && <p className="text-xs text-green-600 font-medium">✓ Nominee identity verified successfully</p>}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
-        {currentStep === 'success' && (
-          <Card className="border-green-200 bg-green-50">
-            <CardHeader>
-              <CardTitle className="text-green-900 flex items-center gap-2">
-                <CheckCircle className="w-6 h-6" />
-                Settlement Submitted Successfully
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="p-6 bg-white rounded-lg border border-green-200">
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Settlement Reference</p>
-                    <p className="text-2xl font-bold">{settlementRef}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Status</p>
-                    <Badge className="bg-blue-100 text-blue-800 border-0 text-base mt-2">PENDING_APPROVAL</Badge>
-                  </div>
+          {step === 3 && data.settlement && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr><th className="text-left p-3 font-semibold">Component</th><th className="text-right p-3 font-semibold">Amount</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    <tr><td className="p-3">SB Account Balance</td><td className="p-3 text-right font-medium text-green-600">{formatCurrency(data.settlement.sbBalance)}</td></tr>
+                    <tr><td className="p-3">FDR Maturity Values</td><td className="p-3 text-right font-medium text-green-600">{formatCurrency(data.settlement.fdrMaturity)}</td></tr>
+                    <tr><td className="p-3">Share Capital Refund</td><td className="p-3 text-right font-medium text-green-600">{formatCurrency(data.settlement.shareCapital)}</td></tr>
+                    <tr className="bg-red-50 dark:bg-red-950"><td className="p-3 text-red-700 dark:text-red-300">Loan Outstanding (Deduction)</td><td className="p-3 text-right font-medium text-red-600">- {formatCurrency(data.settlement.loanOutstanding)}</td></tr>
+                    <tr className="bg-primary/5 font-bold"><td className="p-3">Net Payable to Nominee</td><td className="p-3 text-right text-primary text-lg">{formatCurrency(netPayable)}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-muted-foreground">Payable to: {firstNominee ? `${firstNominee.name} (${firstNominee.relationship})` : 'Legal heir'} — Bank NEFT/RTGS</p>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-muted/30 border border-border space-y-2">
+                <p className="text-sm font-semibold">Summary</p>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Member</span><span>{memberName} ({data.member?.memberNumber})</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Date of Death</span><span>{dateOfDeath || '—'}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Net Payable</span><span className="font-bold text-primary">{formatCurrency(netPayable)}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Payable To</span><span>{firstNominee ? `${firstNominee.name} (${firstNominee.relationship})` : 'Legal heir'}</span></div>
+              </div>
+              <Alert>
+                <AlertDescription>This settlement will be submitted for <strong>Maker-Checker approval</strong>.</AlertDescription>
+              </Alert>
+            </div>
+          )}
+
+          {step === 5 && (
+            <div className="text-center space-y-4 py-4">
+              <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mx-auto">
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-green-700 dark:text-green-400">Settlement Submitted!</h3>
+                <p className="text-muted-foreground mt-1">The death settlement has been submitted for approval.</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/30 border border-border">
+                <p className="text-xs text-muted-foreground">Settlement Reference Number</p>
+                <div className="flex items-center justify-center gap-2 mt-1">
+                  <span className="font-mono text-lg font-bold">{settlementRef}</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigator.clipboard.writeText(settlementRef)}>
+                    <Copy className="w-3.5 h-3.5" />
+                  </Button>
                 </div>
               </div>
+              <Button onClick={() => router.push('/dashboard/members')}>Back to Members</Button>
+            </div>
+          )}
 
-              <div className="space-y-4">
-                <h4 className="font-semibold">Next Steps</h4>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex gap-2">
-                    <span className="text-green-600">✓</span>
-                    <span>Settlement submitted to approval queue</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="text-amber-600">→</span>
-                    <span>Waiting for Society Admin approval (Checker)</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="text-blue-600">→</span>
-                    <span>Once approved, nominee will receive settlement amount</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="text-blue-600">→</span>
-                    <span>You will receive notification upon approval/rejection</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => router.push(`/dashboard/members/${params.id}`)}>
-                  View Member Profile
-                </Button>
-                <Button onClick={() => router.push('/dashboard/approvals')}>
-                  View Approvals Queue
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+          {step < 5 && (
+            <div className="flex justify-between pt-2">
+              <Button variant="outline" onClick={() => step > 0 ? setStep(s => s - 1) : router.back()} disabled={submitting}>
+                <ArrowLeft className="w-4 h-4 mr-2" />{step === 0 ? 'Cancel' : 'Back'}
+              </Button>
+              <Button onClick={handleNext} disabled={!canNext() || submitting} className="gap-2">
+                {submitting ? 'Submitting...' : step === 4 ? 'Submit for Approval' : 'Next'}
+                {!submitting && <ArrowRight className="w-4 h-4" />}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

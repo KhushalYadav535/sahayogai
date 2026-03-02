@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
+import { membersApi, sbApi, loansApi } from '@/lib/api';
 import { Permission, UserRole } from '@/lib/types/auth';
 import { Member, MemberStatus, MemberCategory, KYCStatus } from '@/lib/types/member';
 import { RiskScorePanel } from '@/components/ai/risk-score-panel';
@@ -35,146 +36,50 @@ import {
 } from '@/components/ui/alert-dialog';
 import { AlertTriangle, Calendar, MapPin, FileText, User, Edit, Pause, LogOut, Heart, Download, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 interface MemberDetailPageProps {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }>;
 }
 
-// Mock member data - in real app, fetch from API
-const mockMember: Member = {
-  id: '1',
-  memberId: 'MEM-202401-0001',
-  tenantId: 'default',
-  firstName: 'Rajesh',
-  lastName: 'Kumar',
-  dateOfBirth: new Date('1980-01-15'),
-  gender: 'M',
-  mobileNumber: '+91-9876543210',
-  email: 'rajesh@example.com',
-  permanentAddress: '123 Main Street, Near Market, Nagpur',
-  correspondenceAddress: '123 Main Street, Near Market, Nagpur',
-  city: 'Nagpur',
-  state: 'Maharashtra',
-  pincode: '440001',
-  occupation: 'Farmer',
-  incomeRange: '2-5 Lakhs',
-  status: MemberStatus.ACTIVE,
-  category: MemberCategory.REGULAR,
-  joinDate: new Date('2023-01-10'),
-  sharesHeld: 10,
-  totalShareAmount: 1000,
-  aadhaar: '1234567890123456',
-  pan: 'AAAPL5055K',
-  kycStatus: KYCStatus.VERIFIED,
-  kycMode: 'AADHAAR_OTP' as any,
-  kycVerifiedDate: new Date('2023-01-10'),
-  kycExpiryDate: new Date('2025-01-10'),
-  nominees: [
-    {
-      name: 'Shweta Kumar',
-      relationship: 'Spouse',
-      mobileNumber: '+91-9876543211',
-      aadhaar: '1234567890123457',
-    },
-  ],
-  jointHolders: [
-    {
-      name: 'Sharma Kumar',
-      memberId: 'MEM-202401-0002',
-      role: 'JOINT' as any,
-    },
-  ],
-  createdAt: new Date('2023-01-10'),
-  updatedAt: new Date('2024-11-15'),
-  createdBy: 'admin',
-  updatedBy: 'admin',
-  isDeleted: false,
-};
-
-const mockDocuments = [
-  {
-    type: 'Aadhaar (Front)',
-    uploadDate: new Date('2023-01-10'),
-    status: 'VERIFIED' as const,
-    verifiedBy: 'Admin User',
-    verifiedOn: new Date('2023-01-10'),
-  },
-  {
-    type: 'Aadhaar (Back)',
-    uploadDate: new Date('2023-01-10'),
-    status: 'VERIFIED' as const,
-    verifiedBy: 'Admin User',
-    verifiedOn: new Date('2023-01-10'),
-  },
-  {
-    type: 'PAN Card',
-    uploadDate: new Date('2023-01-10'),
-    status: 'VERIFIED' as const,
-    verifiedBy: 'Admin User',
-    verifiedOn: new Date('2023-01-10'),
-  },
-  {
-    type: 'Photo',
-    uploadDate: new Date('2023-01-10'),
-    status: 'VERIFIED' as const,
-    verifiedBy: 'Admin User',
-    verifiedOn: new Date('2023-01-10'),
-  },
-];
-
-const mockAccounts = [
-  {
-    accountNo: 'SB-001234',
-    type: 'Savings',
-    balance: 25000,
-    status: 'ACTIVE',
-    openedDate: new Date('2023-01-10'),
-  },
-  {
-    accountNo: 'SB-001235',
-    type: 'Savings - Minor',
-    balance: 5000,
-    status: 'ACTIVE',
-    openedDate: new Date('2024-05-20'),
-  },
-];
-
-const mockLoans = [
-  {
-    loanId: 'LN-2024-00001',
-    type: 'Short Term',
-    amount: 50000,
-    outstanding: 32500,
-    status: 'ACTIVE',
-    nextEmiDate: new Date('2024-12-15'),
-  },
-];
-
-const mockAuditTrail = [
-  {
-    event: 'Member Created',
-    user: 'Admin User',
-    role: 'SOCIETY_ADMIN',
-    timestamp: new Date('2023-01-10'),
-    ip: '192.168.1.1',
-  },
-  {
-    event: 'KYC Verified',
-    user: 'Secretary Officer',
-    role: 'SECRETARY',
-    timestamp: new Date('2023-01-10'),
-    ip: '192.168.1.2',
-  },
-  {
-    event: 'Status Changed to ACTIVE',
-    user: 'Admin User',
-    role: 'SOCIETY_ADMIN',
-    timestamp: new Date('2023-01-11'),
-    ip: '192.168.1.1',
-  },
-];
+function mapApiMember(m: any): Member {
+  return {
+    id: m.id,
+    memberId: m.memberNumber || m.memberId,
+    tenantId: m.tenantId,
+    firstName: m.firstName,
+    lastName: m.lastName,
+    dateOfBirth: m.dateOfBirth ? new Date(m.dateOfBirth) : new Date(),
+    gender: (m.gender === 'male' || m.gender === 'M' ? 'M' : m.gender === 'female' || m.gender === 'F' ? 'F' : 'O') as 'M' | 'F' | 'O',
+    mobileNumber: m.phone || '',
+    email: m.email || '',
+    permanentAddress: m.address || '',
+    correspondenceAddress: m.address || '',
+    city: m.district || '',
+    state: m.state || '',
+    pincode: m.pincode || '',
+    occupation: m.occupation || '',
+    incomeRange: '',
+    status: (m.status?.toUpperCase() || 'ACTIVE') as MemberStatus,
+    category: MemberCategory.REGULAR,
+    joinDate: m.joinDate ? new Date(m.joinDate) : new Date(),
+    sharesHeld: 0,
+    totalShareAmount: 0,
+    aadhaar: m.aadhaarNumber || '',
+    pan: m.panNumber || '',
+    kycStatus: (m.kycStatus?.toUpperCase() || 'PENDING') as KYCStatus,
+    kycMode: 'AADHAAR_OTP' as any,
+    kycVerifiedDate: m.kycVerifiedAt ? new Date(m.kycVerifiedAt) : undefined,
+    kycExpiryDate: undefined,
+    nominees: (m.nominees || []).map((n: any) => ({ name: n.name, relationship: n.relationship, mobileNumber: n.phone || '', aadhaar: '' })),
+    jointHolders: [],
+    createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
+    updatedAt: m.updatedAt ? new Date(m.updatedAt) : new Date(),
+    createdBy: 'admin',
+    updatedBy: 'admin',
+    isDeleted: false,
+  };
+}
 
 const getStatusColor = (status: MemberStatus) => {
   const colors: Record<MemberStatus, string> = {
@@ -199,10 +104,54 @@ const getKYCStatusColor = (status: KYCStatus) => {
 };
 
 export default function MemberDetailPage({ params }: MemberDetailPageProps) {
+  const { id } = use(params);
   const router = useRouter();
+  const { toast } = useToast();
   const { user, hasPermission } = useAuth();
-  const [member] = useState<Member>(mockMember);
+  const [member, setMember] = useState<Member | null>(null);
+  const [accounts, setAccounts] = useState<{ accountNo: string; type: string; balance: number; status: string; openedDate: Date }[]>([]);
+  const [loans, setLoans] = useState<{ loanId: string; type: string; amount: number; outstanding: number; status: string; nextEmiDate?: Date }[]>([]);
+  const [documents, setDocuments] = useState<{ type: string; uploadDate: Date; status: string; verifiedBy: string; verifiedOn: Date }[]>([]);
+  const [auditTrail, setAuditTrail] = useState<{ event: string; user: string; role: string; timestamp: Date; ip: string }[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [kycReinitiating, setKycReinitiating] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    Promise.all([
+      membersApi.get(id),
+      sbApi.list({ memberId: id }),
+      loansApi.list({ memberId: id }),
+    ]).then(([memRes, sbRes, loanRes]) => {
+      if (memRes.member) setMember(mapApiMember(memRes.member));
+      setAccounts((sbRes.accounts || []).map((a: any) => ({
+        accountNo: a.accountNumber,
+        type: a.accountType || 'Savings',
+        balance: Number(a.balance) || 0,
+        status: (a.status || 'active').toUpperCase(),
+        openedDate: a.openedAt ? new Date(a.openedAt) : new Date(),
+      })));
+      setLoans((loanRes.loans || []).map((l: any) => ({
+        loanId: l.loanNumber || l.id,
+        type: l.loanType || 'Short Term',
+        amount: Number(l.principalAmount || l.amount) || 0,
+        outstanding: Number(l.outstandingPrincipal || l.outstanding) || 0,
+        status: (l.status || 'active').toUpperCase(),
+        nextEmiDate: l.emiSchedule?.[0]?.dueDate ? new Date(l.emiSchedule[0].dueDate) : undefined,
+      })));
+      setDocuments([]);
+      setAuditTrail([]);
+    }).catch(() => setMember(null)).finally(() => setLoading(false));
+  }, [id]);
+
+  if (!id || loading || !member) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <p className="text-muted-foreground">{!id ? 'Invalid member' : loading ? 'Loading...' : 'Member not found'}</p>
+      </div>
+    );
+  }
 
   const age = member.dateOfBirth ? new Date().getFullYear() - new Date(member.dateOfBirth).getFullYear() : 0;
   const daysUntilKYCExpiry = member.kycExpiryDate ? Math.ceil((new Date(member.kycExpiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
@@ -252,6 +201,12 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                   </AlertDialogContent>
                 </AlertDialog>
+                <Link href={`/dashboard/members/${member.id}/form15`}>
+                  <Button variant="outline" size="sm">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Form 15G/15H
+                  </Button>
+                </Link>
                 <Link href={`/dashboard/members/${member.id}/death-settlement`}>
                   <Button variant="outline" size="sm">
                     <Heart className="w-4 h-4 mr-2" />
@@ -418,14 +373,31 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                   {member.kycStatus}
                 </Badge>
               </div>
-              <Button variant="outline">
+              <Button
+                variant="outline"
+                disabled={kycReinitiating}
+                onClick={async () => {
+                  if (!id) return;
+                  setKycReinitiating(true);
+                  try {
+                    await membersApi.kyc.reinitiate(id);
+                    toast({ title: 'eKYC Re-initiated', description: 'Member KYC status reset to pending. Member must complete verification.' });
+                    const res = await membersApi.get(id);
+                    if (res.member) setMember(mapApiMember(res.member));
+                  } catch (e) {
+                    toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
+                  } finally {
+                    setKycReinitiating(false);
+                  }
+                }}
+              >
                 <AlertTriangle className="w-4 h-4 mr-2" />
-                Re-initiate eKYC
+                {kycReinitiating ? 'Re-initiating...' : 'Re-initiate eKYC'}
               </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {mockDocuments.map((doc, idx) => (
+              {documents.map((doc, idx) => (
                 <Card key={idx}>
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
@@ -488,7 +460,7 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockAccounts.map((account) => (
+                  {accounts.map((account) => (
                     <TableRow key={account.accountNo}>
                       <TableCell className="font-semibold">{account.accountNo}</TableCell>
                       <TableCell>{account.type}</TableCell>
@@ -532,7 +504,7 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockLoans.map((loan) => (
+                  {loans.map((loan) => (
                     <TableRow key={loan.loanId}>
                       <TableCell className="font-semibold">{loan.loanId}</TableCell>
                       <TableCell>{loan.type}</TableCell>
@@ -612,7 +584,7 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockAuditTrail.map((entry, idx) => (
+                {auditTrail.map((entry, idx) => (
                   <div key={idx} className="flex gap-4 pb-4 border-b last:border-0">
                     <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
