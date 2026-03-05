@@ -95,7 +95,7 @@ export default function NewDepositPage() {
         try {
             const res = await depositsApi.create({
                 memberId: member.id,
-                depositType: type.toLowerCase() as 'fd' | 'rd' | 'mis',
+                depositType: type === 'FDR' ? 'fd' : type === 'RD' ? 'rd' : 'mis',
                 principal: amount,
                 interestRate: rate,
                 tenureMonths: months,

@@ -77,7 +77,8 @@ const navigationItems: NavItem[] = [
     tenantOnly: true,
     children: [
       { label: 'All Accounts', href: '/dashboard/accounts', icon: <Wallet className="w-4 h-4" /> },
-      { label: 'Transfer', href: '/dashboard/accounts/transfer', icon: <CreditCard className="w-4 h-4" /> },
+      { label: 'Open Account', href: '/dashboard/accounts/new', icon: <FileText className="w-4 h-4" />, requiredPermissions: [Permission.ACCOUNT_CREATE] },
+      { label: 'Transfer', href: '/dashboard/accounts/transfer', icon: <CreditCard className="w-4 h-4" />, requiredPermissions: [Permission.ACCOUNT_DEPOSIT] },
     ],
   },
   {

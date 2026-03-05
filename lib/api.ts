@@ -16,7 +16,16 @@ async function api<T>(
 
   const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || res.statusText || "Request failed");
+  if (!res.ok) {
+    const zodMsg =
+      Array.isArray((data as any)?.errors)
+        ? ((data as any).errors as any[])
+            .map((e: any) => `${(e.path || []).join(".") || "body"}: ${e.message}`)
+            .join("; ")
+        : null;
+    const msg = zodMsg || (data as any)?.message || res.statusText || "Request failed";
+    throw new Error(msg);
+  }
   return data as T;
 }
 
@@ -298,6 +307,19 @@ export const depositsApi = {
       body: JSON.stringify(body),
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
+  mature: (id: string, token?: string) =>
+    api<{ success: boolean; principal: number; totalInterest: number; tdsDeducted: number; netPayable: number }>(`/deposits/${id}/mature`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  getMaturing: (days?: number, token?: string) => {
+    const q = new URLSearchParams();
+    if (days) q.set("days", String(days));
+    return api<{ success: boolean; deposits: any[] }>(
+      `/deposits/maturing?${q}`,
+      { headers: { Authorization: `Bearer ${token || getToken() || ""}` } }
+    );
+  },
 };
 
 // SB Accounts
@@ -316,8 +338,32 @@ export const sbApi = {
     api<{ success: boolean; account: any }>(`/sb/accounts/${id}`, {
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
+  create: (body: {
+    memberId: string;
+    openingDeposit: number;
+    interestRate?: number;
+    operationMode?: string;
+    nominee?: string;
+  }, token?: string) =>
+    api<{ success: boolean; account: any; message?: string }>("/sb/accounts", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
   transfer: (body: { fromAccountId: string; toAccountId: string; amount: number; remarks?: string }, token?: string) =>
     api<{ success: boolean; message: string }>(`/sb/transfers`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  deposit: (id: string, body: { amount: number; remarks?: string }, token?: string) =>
+    api<{ success: boolean; account: any; transaction: any; message?: string }>(`/sb/accounts/${id}/deposit`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  withdraw: (id: string, body: { amount: number; remarks?: string }, token?: string) =>
+    api<{ success: boolean; account: any; transaction: any; message?: string }>(`/sb/accounts/${id}/withdraw`, {
       method: "POST",
       body: JSON.stringify(body),
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
@@ -671,6 +717,13 @@ export const governanceApi = {
 export const complianceApi = {
   nabard: (period?: string, t?: string) => api<{ success: boolean; report: any }>(`/compliance/nabard-report${period ? `?period=${period}` : ""}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
   tds26q: (quarter?: string, t?: string) => api<{ success: boolean; report: any }>(`/compliance/tds-26q${quarter ? `?quarter=${quarter}` : ""}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  tdsRecords: (fy?: string, t?: string) => api<{ success: boolean; records: any[]; summary: any }>(`/compliance/tds-records${fy ? `?fy=${fy}` : ""}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  tdsQuarterly: (fy?: string, t?: string) => api<{ success: boolean; quarterly: any[]; fy: string }>(`/compliance/tds-quarterly${fy ? `?fy=${fy}` : ""}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  generateTdsCertificates: (fy?: string, t?: string) => api<{ success: boolean; certificates: any[]; message: string }>("/compliance/tds-certificates", {
+    method: "POST",
+    body: JSON.stringify({ fy }),
+    headers: { Authorization: `Bearer ${t || getToken() || ""}` },
+  }),
   str: (from?: string, to?: string, t?: string) => { const q = new URLSearchParams(); if (from) q.set("from", from); if (to) q.set("to", to); return api<{ success: boolean; report: any }>(`/compliance/str?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }); },
   aml: (from?: string, t?: string) => api<{ success: boolean; report: any }>(`/compliance/aml${from ? `?from=${from}` : ""}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
 };

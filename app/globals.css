@@ -156,3 +156,33 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  /* Fix Dialog z-index to prevent overlapping with other elements */
+  [data-state="open"][role="dialog"] {
+    z-index: 9999 !important;
+  }
+  
+  [data-state="open"][role="dialog"] > div {
+    z-index: 9999 !important;
+  }
+  
+  /* Fix Dialog backdrop */
+  [data-state="open"][data-portal] {
+    z-index: 9998 !important;
+  }
+  
+  /* More specific Dialog content targeting */
+  .fixed.inset-0.z-50 {
+    z-index: 9999 !important;
+  }
+  
+  .fixed.inset-0.z-50 > div {
+    z-index: 9999 !important;
+  }
+  
+  /* Ensure Dialog content is above backdrop */
+  .bg-background {
+    z-index: 9999 !important;
+  }
+}

@@ -63,6 +63,14 @@ export default function NewLoanPage() {
   const [tenure, setTenure] = useState(12);
   const [rate] = useState(13);
   const [collateral, setCollateral] = useState('');
+  const [loanSubType, setLoanSubType] = useState('');
+  const [goldValue, setGoldValue] = useState(0);
+  const [householdIncome, setHouseholdIncome] = useState(0);
+  // Derived CoA fields
+  const goldLtv = goldValue > 0 ? ((amount / goldValue) * 100).toFixed(1) : null;
+  const isGoldLoan = selectedProduct === 'GOLD_LOAN' || loanSubType === 'gold';
+  const isMicrofinance = loanSubType === 'micro' || loanSubType === 'shg';
+  const maxGoldLoan = goldValue > 0 ? goldValue * 0.75 : null;
 
   // Step 3
   const [guarantorSearch, setGuarantorSearch] = useState('');
@@ -122,15 +130,25 @@ export default function NewLoanPage() {
     if (!selectedMember) return;
     setSubmitting(true);
     try {
-      await loansApi.createApplication({
+      const applicationData = {
         memberId: selectedMember.id,
         loanType: LOAN_TYPE_MAP[selectedProduct] || 'personal',
+        loanSubType: loanSubType || undefined,
         amountRequested: amount,
         purpose: purpose || 'General',
         tenureMonths: tenure,
-      });
+        moratoriumMonths: 0, // Default to 0 moratorium months
+        goldValue: isGoldLoan ? (goldValue > 0 ? goldValue : amount) : undefined,
+        householdIncome: isMicrofinance && householdIncome > 0 ? householdIncome : undefined,
+      };
+      
+      console.log('Submitting loan application:', applicationData);
+      
+      await loansApi.createApplication(applicationData);
       setSubmitted(true);
-    } catch {
+    } catch (error: any) {
+      console.error('Loan application error:', error);
+      alert(`Failed to submit application: ${error.message || 'Unknown error'}`);
       setSubmitting(false);
     }
   };
@@ -243,6 +261,46 @@ export default function NewLoanPage() {
                 <label className="text-sm font-medium">Collateral Type</label>
                 <div className="grid grid-cols-2 gap-2 mt-2">{COLLATERAL_TYPES.map(c => <button key={c} onClick={() => setCollateral(c)} className={`px-3 py-2 rounded-lg text-sm border transition-colors ${collateral === c ? 'bg-primary/10 border-primary text-primary font-medium' : 'border-border hover:border-primary/50'}`}>{c}</button>)}</div>
               </div>
+              {/* COA: Loan Sub-type */}
+              <div>
+                <label className="text-sm font-medium">Loan Sub-type (CoA)</label>
+                <select className="mt-1 w-full border border-border rounded-lg p-2 text-sm bg-background" value={loanSubType} onChange={e => setLoanSubType(e.target.value)}>
+                  <option value="">— Select sub-type —</option>
+                  <option value="kcc">KCC (Kisan Credit Card)</option>
+                  <option value="crop">Crop Loan</option>
+                  <option value="livestock">Livestock Loan</option>
+                  <option value="gold">Gold Loan</option>
+                  <option value="lad">Loan Against Deposit (LAD)</option>
+                  <option value="shg">SHG Loan</option>
+                  <option value="msme">MSME Loan</option>
+                  <option value="housing">Housing Loan</option>
+                  <option value="staff">Staff Loan</option>
+                  <option value="micro">Microfinance</option>
+                  <option value="personal">Personal</option>
+                </select>
+              </div>
+              {/* COA: Gold value (required for gold loans, LTV displayed) */}
+              {isGoldLoan && (
+                <div>
+                  <label className="text-sm font-medium">Appraised Gold Value (₹) *</label>
+                  <input type="number" className="mt-1 w-full border border-border rounded-lg p-2 text-sm bg-background" placeholder="Enter gold value" value={goldValue || ''} onChange={e => setGoldValue(Number(e.target.value))} />
+                  {goldValue > 0 && (
+                    <div className={`mt-1 text-xs font-medium ${amount > goldValue * 0.75 ? 'text-red-600' : 'text-green-600'}`}>
+                      LTV: {goldLtv}% (Max: 75%) — Max eligible: {formatCurrency(maxGoldLoan ?? 0, 0)}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* COA: Household income for microfinance JLG/SHG */}
+              {isMicrofinance && (
+                <div>
+                  <label className="text-sm font-medium">Annual Household Income (₹) *</label>
+                  <input type="number" className="mt-1 w-full border border-border rounded-lg p-2 text-sm bg-background" placeholder="Declared annual household income" value={householdIncome || ''} onChange={e => setHouseholdIncome(Number(e.target.value))} />
+                  {householdIncome > 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">Max EMI allowed: {formatCurrency((householdIncome / 12) * 0.5)}/month (50% income cap)</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

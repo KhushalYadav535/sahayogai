@@ -18,24 +18,45 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { useToast } from '@/hooks/use-toast';
 
 const roleColors: Record<string, string> = {
+    [UserRole.PLATFORM_ADMIN]: 'bg-red-100 text-red-800',
     [UserRole.SOCIETY_ADMIN]: 'bg-purple-100 text-purple-800',
+    [UserRole.PRESIDENT]: 'bg-yellow-100 text-yellow-800',
+    [UserRole.SECRETARY]: 'bg-cyan-100 text-cyan-800',
     [UserRole.ACCOUNTANT]: 'bg-blue-100 text-blue-800',
     [UserRole.SENIOR_ACCOUNTANT]: 'bg-indigo-100 text-indigo-800',
     [UserRole.LOAN_OFFICER]: 'bg-green-100 text-green-800',
-    [UserRole.TELLER]: 'bg-gray-100 text-gray-700',
+    [UserRole.COMPLIANCE_OFFICER]: 'bg-rose-100 text-rose-800',
+    [UserRole.AUDITOR]: 'bg-slate-100 text-slate-700',
     [UserRole.MEMBER]: 'bg-orange-100 text-orange-800',
-    [UserRole.PLATFORM_ADMIN]: 'bg-red-100 text-red-800',
 };
 
+// Backend role string → frontend UserRole label
 const roleMap: Record<string, string> = {
     superadmin: UserRole.PLATFORM_ADMIN,
     admin: UserRole.SOCIETY_ADMIN,
-    staff: UserRole.ACCOUNTANT,
+    president: UserRole.PRESIDENT,
+    secretary: UserRole.SECRETARY,
+    accountant: UserRole.ACCOUNTANT,
+    senior_accountant: UserRole.SENIOR_ACCOUNTANT,
+    loan_officer: UserRole.LOAN_OFFICER,
+    compliance_officer: UserRole.COMPLIANCE_OFFICER,
+    auditor: UserRole.AUDITOR,
+    member: UserRole.MEMBER,
+    staff: UserRole.ACCOUNTANT, // legacy fallback
 };
+
+// Frontend UserRole → backend role string (for saving)
 const roleToBackend: Record<string, string> = {
-    [UserRole.SOCIETY_ADMIN]: 'admin',
     [UserRole.PLATFORM_ADMIN]: 'superadmin',
-    [UserRole.ACCOUNTANT]: 'staff',
+    [UserRole.SOCIETY_ADMIN]: 'admin',
+    [UserRole.PRESIDENT]: 'president',
+    [UserRole.SECRETARY]: 'secretary',
+    [UserRole.ACCOUNTANT]: 'accountant',
+    [UserRole.SENIOR_ACCOUNTANT]: 'senior_accountant',
+    [UserRole.LOAN_OFFICER]: 'loan_officer',
+    [UserRole.COMPLIANCE_OFFICER]: 'compliance_officer',
+    [UserRole.AUDITOR]: 'auditor',
+    [UserRole.MEMBER]: 'member',
 };
 
 type UserRow = {

@@ -36,6 +36,8 @@ function mapLoan(l: any) {
     member: memberName,
     memberId: l.memberId,
     type: (l.loanType || 'SHORT_TERM').toUpperCase().replace(/ /g, '_'),
+    loanSubType: l.loanSubType ?? null,
+    glCode: l.glCode ?? null,
     amount: Number(l.disbursedAmount ?? l.principalAmount ?? l.amount ?? 0),
     rate: Number(l.interestRate ?? 0),
     tenure: l.tenureMonths ?? l.tenure ?? 0,
@@ -46,7 +48,10 @@ function mapLoan(l: any) {
     totalOutstanding: outstanding + interestAccrued + penalInterest,
     disbursedOn: l.disbursedAt ? new Date(l.disbursedAt) : new Date(),
     maturityDate: l.maturityDate ? new Date(l.maturityDate) : new Date(),
+    npaCategory: (l.npaCategory ?? 'standard') as string,
     npaStatus: (l.npaCategory ?? l.npaStatus ?? 'STANDARD').toUpperCase(),
+    npaDpd: Number(l.npaDpd ?? l.overdueDays ?? 0),
+    npaProvision: Number(l.npaProvision ?? 0),
     overdueDays: l.overdueDays ?? 0,
     irac: l.irac ?? null,
     moratoriumEnd: l.moratoriumEnd ? new Date(l.moratoriumEnd) : null,
@@ -138,17 +143,36 @@ export default function LoanDetailPage({ params }: { params: { id: string } }) {
             <Card>
               <CardHeader><CardTitle className="text-base">Loan Information</CardTitle></CardHeader>
               <CardContent className="space-y-2 text-sm">
-                {[['Loan ID', loan.loanId], ['Type', loan.type.replace('_', ' ')], ['Amount', formatCurrency(loan.amount, 0)], ['Interest Rate', loan.rate + '% p.a.'], ['Tenure', loan.tenure + ' months'], ['Disbursed On', formatDate(loan.disbursedOn)], ['Maturity Date', formatDate(loan.maturityDate)]].map(([k, v]) => (
+                {[['Loan ID', loan.loanId], ['Type', loan.type.replace('_', ' ')], ...(loan.loanSubType ? [['Sub-type', loan.loanSubType.toUpperCase()]] : []), ['Amount', formatCurrency(loan.amount, 0)], ['Interest Rate', loan.rate + '% p.a.'], ['Tenure', loan.tenure + ' months'], ['Disbursed On', formatDate(loan.disbursedOn)], ['Maturity Date', formatDate(loan.maturityDate)], ...(loan.glCode ? [['GL Account', loan.glCode]] : [])].map(([k, v]) => (
                   <div key={k} className="flex justify-between"><span className="text-muted-foreground">{k}</span><span className="font-medium">{v}</span></div>
                 ))}
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="text-base flex items-center gap-2"><Shield className="w-4 h-4" /> NPA Status</CardTitle></CardHeader>
-              <CardContent>
-                <Badge className="bg-green-100 text-green-800 mb-3">{loan.npaStatus}</Badge>
-                <p className="text-sm text-muted-foreground">Overdue Days: <span className="font-semibold text-foreground">0</span></p>
-                <p className="text-sm text-muted-foreground mt-1">Provisioning Required: <span className="font-semibold text-foreground">₹0</span></p>
+              <CardHeader><CardTitle className="text-base flex items-center gap-2"><Shield className="w-4 h-4" /> NPA / IRAC Status</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <Badge className={`${loan.npaCategory === 'standard' || loan.npaStatus === 'STANDARD' ? 'bg-green-100 text-green-800' :
+                    loan.npaCategory === 'sma_0' || loan.npaCategory === 'sma_1' ? 'bg-yellow-100 text-yellow-800' :
+                      loan.npaCategory === 'sub_standard' ? 'bg-orange-100 text-orange-800' :
+                        loan.npaStatus === 'LOSS' ? 'bg-red-200 text-red-900' :
+                          'bg-red-100 text-red-800'
+                  }`}>{loan.npaStatus.replace('_', ' ')}</Badge>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Days Past Due (DPD)</span>
+                    <span className={`font-semibold ${loan.npaDpd >= 90 ? 'text-red-600' : loan.npaDpd >= 30 ? 'text-yellow-600' : 'text-foreground'}`}>{loan.npaDpd}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Required Provision</span>
+                    <span className="font-semibold">{formatCurrency(loan.npaProvision)}</span>
+                  </div>
+                  {loan.npaDpd >= 90 && (
+                    <p className="text-xs text-red-600 mt-1">⚠ NPA — interest recognition suspended per IRAC norms</p>
+                  )}
+                  {loan.npaDpd >= 30 && loan.npaDpd < 90 && (
+                    <p className="text-xs text-yellow-600 mt-1">⚠ SMA — monitor closely for NPA slippage</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>

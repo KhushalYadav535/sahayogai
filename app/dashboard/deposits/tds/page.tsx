@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,38 +8,105 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
-import { ArrowLeft, Shield, FileText, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Shield, FileText, CheckCircle, RefreshCw, Download } from 'lucide-react';
+import { complianceApi } from '@/lib/api';
+import { useAuth } from '@/components/providers/auth-provider';
 
-const mockTDSRecords = [
-    { member: 'Rajesh Kumar', depositNo: 'FDR-2024-0012', interest: 50000, tdsAmt: 5000, fy: '2025-26', status: 'PENDING', form15G: false },
-    { member: 'Priya Sharma', depositNo: 'FDR-2024-0001', interest: 25000, tdsAmt: 2500, fy: '2025-26', status: 'DEPOSITED', form15G: false },
-    { member: 'Amit Patel', depositNo: 'RD-2024-0004', interest: 35000, tdsAmt: 0, fy: '2025-26', status: 'EXEMPT', form15G: true },
-    { member: 'Leela Nair', depositNo: 'FDR-2024-0019', interest: 12000, tdsAmt: 1200, fy: '2025-26', status: 'PENDING', form15G: false },
-];
-
-const quarterlyData = [
-    { quarter: 'Q1 (Apr-Jun)', dueDate: '15 Jul', payable: 8500, status: 'PAID' },
-    { quarter: 'Q2 (Jul-Sep)', dueDate: '15 Oct', payable: 0, status: 'NIL' },
-    { quarter: 'Q3 (Oct-Dec)', dueDate: '15 Jan', payable: 3200, status: 'PAID' },
-    { quarter: 'Q4 (Jan-Mar)', dueDate: '15 Apr', payable: 4700, status: 'PENDING' },
-];
 
 export default function TDSManagementPage() {
     const router = useRouter();
+    const { isAuthenticated } = useAuth();
     const [tab, setTab] = useState<'records' | 'quarterly' | 'certificates'>('records');
     const [fy, setFy] = useState('2025-26');
     const [generating, setGenerating] = useState(false);
     const [generated, setGenerated] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [tdsRecords, setTdsRecords] = useState<any[]>([]);
+    const [quarterlyData, setQuarterlyData] = useState<any[]>([]);
+    const [certificates, setCertificates] = useState<any[]>([]);
+    const [summary, setSummary] = useState<any>(null);
 
-    const totalTDS = mockTDSRecords.reduce((s, r) => s + r.tdsAmt, 0);
-    const pendingCount = mockTDSRecords.filter(r => r.status === 'PENDING').length;
-    const exemptCount = mockTDSRecords.filter(r => r.status === 'EXEMPT').length;
+    // Redirect if not authenticated
+    useEffect(() => {
+        if (!isAuthenticated) {
+            router.push('/login');
+        }
+    }, [isAuthenticated, router]);
+
+    const totalTDS = summary?.totalTDS || 0;
+    const pendingCount = summary?.pendingCount || 0;
+    const exemptCount = summary?.exemptCount || 0;
+
+    // Fetch TDS records
+    useEffect(() => {
+        if (!isAuthenticated) return; // Don't fetch if not authenticated
+        
+        const fetchTdsRecords = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const response = await complianceApi.tdsRecords(fy);
+                setTdsRecords(response.records || []);
+                setSummary(response.summary || {});
+            } catch (err: any) {
+                if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+                    setError('Authentication failed. Please log in again.');
+                    setTimeout(() => {
+                        router.push('/login');
+                    }, 2000);
+                } else {
+                    setError(err instanceof Error ? err.message : 'Failed to fetch TDS records');
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchTdsRecords();
+    }, [fy, isAuthenticated, router]);
+
+    // Fetch quarterly data
+    useEffect(() => {
+        const fetchQuarterlyData = async () => {
+            try {
+                const response = await complianceApi.tdsQuarterly(fy);
+                setQuarterlyData(response.quarterly || []);
+            } catch (err) {
+                console.error('Failed to fetch quarterly data:', err);
+            }
+        };
+        fetchQuarterlyData();
+    }, [fy]);
 
     const generateCertificates = async () => {
         setGenerating(true);
-        await new Promise(r => setTimeout(r, 2000));
-        setGenerating(false);
-        setGenerated(true);
+        setError(null);
+        try {
+            const response = await complianceApi.generateTdsCertificates(fy);
+            setCertificates(response.certificates || []);
+            setGenerated(true);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to generate certificates');
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const export26Q = async () => {
+        try {
+            const currentQuarter = Math.ceil((new Date().getMonth() + 1) / 3);
+            const quarter = `${new Date().getFullYear()}-Q${currentQuarter}`;
+            await complianceApi.tds26q(quarter);
+            // TODO: Handle file download
+            alert('TDS 26Q report exported successfully');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to export 26Q');
+        }
+    };
+
+    const exportExcel = () => {
+        // TODO: Implement Excel export
+        alert('Excel export will be implemented');
     };
 
     return (
@@ -57,6 +124,13 @@ export default function TDSManagementPage() {
                 ))}
             </div>
 
+            {error && (
+                <Alert className="border-red-200 bg-red-50 dark:bg-red-950">
+                    <CheckCircle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-700">{error}</AlertDescription>
+                </Alert>
+            )}
+
             {/* Tabs */}
             <div className="flex gap-2 border-b border-border">
                 {(['records', 'quarterly', 'certificates'] as const).map(t => (
@@ -64,15 +138,18 @@ export default function TDSManagementPage() {
                         {t === 'records' ? 'TDS Records' : t === 'quarterly' ? 'Quarterly Filing' : 'Form 16A Certificates'}
                     </button>
                 ))}
+                <Button variant="outline" size="sm" onClick={() => window.location.reload()} disabled={loading} className="ml-auto">
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
             </div>
 
             {tab === 'records' && (
                 <Card>
                     <CardHeader><CardTitle className="flex items-center justify-between">
-                        <span>Member-wise TDS</span>
+                        <span>{loading ? 'Loading...' : 'Member-wise TDS'}</span>
                         <div className="flex gap-2">
-                            <Button size="sm" variant="outline">Export 26Q</Button>
-                            <Button size="sm" variant="outline">Export Excel</Button>
+                            <Button size="sm" variant="outline" onClick={export26Q} disabled={loading}>Export 26Q</Button>
+                            <Button size="sm" variant="outline" onClick={exportExcel} disabled={loading}>Export Excel</Button>
                         </div>
                     </CardTitle></CardHeader>
                     <CardContent>
@@ -84,20 +161,30 @@ export default function TDSManagementPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {mockTDSRecords.map((r, i) => (
-                                    <TableRow key={i}>
-                                        <TableCell className="font-medium">{r.member}</TableCell>
-                                        <TableCell className="font-mono text-xs">{r.depositNo}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(r.interest, 0)}</TableCell>
-                                        <TableCell className="text-right font-medium">{r.tdsAmt ? formatCurrency(r.tdsAmt, 0) : '—'}</TableCell>
-                                        <TableCell>{r.fy}</TableCell>
-                                        <TableCell>
-                                            <Badge className={r.status === 'DEPOSITED' ? 'bg-green-100 text-green-800' : r.status === 'EXEMPT' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}>
-                                                {r.status}{r.form15G ? ' (15G)' : ''}
-                                            </Badge>
-                                        </TableCell>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="text-center py-8">Loading TDS records...</TableCell>
                                     </TableRow>
-                                ))}
+                                ) : tdsRecords.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="text-center py-8">No TDS records found for FY {fy}</TableCell>
+                                    </TableRow>
+                                ) : (
+                                    tdsRecords.map((r, i) => (
+                                        <TableRow key={r.id || i}>
+                                            <TableCell className="font-medium">{r.member}</TableCell>
+                                            <TableCell className="font-mono text-xs">{r.depositNo}</TableCell>
+                                            <TableCell className="text-right">{formatCurrency(r.interest, 0)}</TableCell>
+                                            <TableCell className="text-right font-medium">{r.tdsAmt ? formatCurrency(r.tdsAmt, 0) : '—'}</TableCell>
+                                            <TableCell>{r.fy}</TableCell>
+                                            <TableCell>
+                                                <Badge className={r.status === 'DEPOSITED' ? 'bg-green-100 text-green-800' : r.status === 'EXEMPT' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}>
+                                                    {r.status}{r.form15G ? ' (15G)' : ''}
+                                                </Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
                             </TableBody>
                         </Table>
                     </CardContent>
@@ -143,10 +230,12 @@ export default function TDSManagementPage() {
                                 <CheckCircle className="h-4 w-4 text-green-600" /><AlertDescription className="text-green-700">2 Form 16A certificates generated for FY {fy}. Download below.</AlertDescription>
                             </Alert>
                         )}
-                        {generated && mockTDSRecords.filter(r => r.status === 'DEPOSITED').map((r, i) => (
-                            <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                                <div><p className="font-medium text-sm">{r.member}</p><p className="text-xs text-muted-foreground">{r.depositNo} • TDS: {formatCurrency(r.tdsAmt, 0)}</p></div>
-                                <Button size="sm" variant="outline">Download</Button>
+                        {generated && certificates.map((cert, i) => (
+                            <div key={cert.id || i} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                                <div><p className="font-medium text-sm">{cert.member}</p><p className="text-xs text-muted-foreground">{cert.depositNo} • TDS: {formatCurrency(cert.tdsAmount, 0)}</p></div>
+                                <Button size="sm" variant="outline" onClick={() => window.open(cert.certificateUrl, '_blank')}>
+                                    <Download className="w-4 h-4 mr-1" /> Download
+                                </Button>
                             </div>
                         ))}
                     </CardContent>

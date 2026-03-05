@@ -4,11 +4,19 @@ import React, { createContext, useContext, useCallback, useEffect, useState } fr
 import { User, LoginCredentials, SignupData, Permission, UserRole, ROLE_PERMISSIONS } from '@/lib/types/auth';
 import { authApi, setApiToken } from '@/lib/api';
 
-// Backend roles -> frontend UserRole
+// Backend roles → frontend UserRole
 const ROLE_MAP: Record<string, UserRole> = {
   superadmin: UserRole.PLATFORM_ADMIN,
   admin: UserRole.SOCIETY_ADMIN,
-  staff: UserRole.ACCOUNTANT,
+  president: UserRole.PRESIDENT,
+  secretary: UserRole.SECRETARY,
+  accountant: UserRole.ACCOUNTANT,
+  senior_accountant: UserRole.SENIOR_ACCOUNTANT,
+  loan_officer: UserRole.LOAN_OFFICER,
+  compliance_officer: UserRole.COMPLIANCE_OFFICER,
+  auditor: UserRole.AUDITOR,
+  member: UserRole.MEMBER,
+  staff: UserRole.ACCOUNTANT, // legacy alias
 };
 
 interface AuthContextType {
