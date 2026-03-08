@@ -98,6 +98,15 @@ export default function UsersPage() {
         refreshUsers().finally(() => setLoading(false));
     }, [refreshUsers]);
 
+    // Reset editRole when editUser changes
+    useEffect(() => {
+        if (editUser) {
+            setEditRole(editUser.role);
+        } else {
+            setEditRole('');
+        }
+    }, [editUser]);
+
     const filtered = users.filter(u =>
         u.name.toLowerCase().includes(search.toLowerCase()) ||
         u.email.toLowerCase().includes(search.toLowerCase())
@@ -133,6 +142,7 @@ export default function UsersPage() {
             await usersApi.updateRole(editUser.id, backendRole);
             await refreshUsers();
             setEditUser(null);
+            setEditRole('');
             toast({ title: 'Role updated' });
         } catch (e: any) {
             toast({ title: e?.message || 'Failed to update role', variant: 'destructive' });
@@ -176,7 +186,7 @@ export default function UsersPage() {
 
             <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1"><Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" /><Input className="pl-9" placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} /></div>
-                <Button onClick={() => setCreateOpen(true)} className="gap-2"><UserPlus className="w-4 h-4" /> Add User</Button>
+                <Button onClick={() => setCreateOpen(true)} className="gap-2 bg-primary text-white hover:bg-primary/90"><UserPlus className="w-4 h-4" /> Add User</Button>
             </div>
 
             <Card>
@@ -200,13 +210,13 @@ export default function UsersPage() {
                                         <TableCell><Badge className={u.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>{u.status}</Badge></TableCell>
                                         <TableCell>
                                             <div className="flex gap-1">
-                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Edit Role" onClick={() => { setEditUser(u); setEditRole(u.role); }}>
+                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-gray-700 hover:text-gray-900 hover:bg-gray-100" title="Edit Role" onClick={() => { setEditUser(u); setEditRole(u.role); }}>
                                                     <Edit className="w-3.5 h-3.5" />
                                                 </Button>
-                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Reset Password" onClick={() => { setResetUser(u); setNewPassword(''); }}>
+                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-gray-700 hover:text-gray-900 hover:bg-gray-100" title="Reset Password" onClick={() => { setResetUser(u); setNewPassword(''); }}>
                                                     <Key className="w-3.5 h-3.5" />
                                                 </Button>
-                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title={u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} onClick={() => handleToggleStatus(u)}>
+                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-gray-700 hover:text-gray-900 hover:bg-gray-100" title={u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} onClick={() => handleToggleStatus(u)}>
                                                     <Power className={`w-3.5 h-3.5 ${u.status === 'ACTIVE' ? 'text-red-500' : 'text-green-500'}`} />
                                                 </Button>
                                             </div>
@@ -224,21 +234,38 @@ export default function UsersPage() {
 
             {/* Create User Modal */}
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent><DialogHeader><DialogTitle>Add New User</DialogTitle></DialogHeader>
-                    <div className="space-y-4">
-                        <div><label className="text-sm font-medium">Full Name *</label><Input className="mt-1" value={newUser.name} onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))} /></div>
-                        <div><label className="text-sm font-medium">Email *</label><Input className="mt-1" type="email" value={newUser.email} onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))} /></div>
-                        <div><label className="text-sm font-medium">Role *</label>
+                <DialogContent className="max-w-md bg-white">
+                    <DialogHeader>
+                        <DialogTitle>Add New User</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-2">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Full Name *</label>
+                            <Input value={newUser.name} onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))} placeholder="Enter full name" />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Email *</label>
+                            <Input type="email" value={newUser.email} onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))} placeholder="Enter email address" />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Role *</label>
                             <Select value={newUser.role} onValueChange={v => setNewUser(p => ({ ...p, role: v }))}>
-                                <SelectTrigger className="mt-1"><SelectValue placeholder="Select role" /></SelectTrigger>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select role" />
+                                </SelectTrigger>
                                 <SelectContent>
                                     {Object.values(UserRole).filter(r => r !== UserRole.PLATFORM_ADMIN).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div><label className="text-sm font-medium">Temporary Password *</label><PasswordInput className="mt-1" value={newUser.password} onChange={e => setNewUser(p => ({ ...p, password: e.target.value }))} /></div>
-                        <Alert><AlertDescription className="text-xs">User will be required to change password on first login.</AlertDescription></Alert>
-                        <Button className="w-full" disabled={!newUser.name || !newUser.email || !newUser.role || !newUser.password || saving} onClick={handleCreate}>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Temporary Password *</label>
+                            <PasswordInput value={newUser.password} onChange={e => setNewUser(p => ({ ...p, password: e.target.value }))} placeholder="Enter temporary password" />
+                        </div>
+                        <Alert>
+                            <AlertDescription className="text-xs">User will be required to change password on first login.</AlertDescription>
+                        </Alert>
+                        <Button className="w-full text-white" disabled={!newUser.name || !newUser.email || !newUser.role || !newUser.password || saving} onClick={handleCreate}>
                             {saving ? 'Creating...' : 'Create User'}
                         </Button>
                     </div>
@@ -246,17 +273,38 @@ export default function UsersPage() {
             </Dialog>
 
             {/* Edit Role Modal */}
-            <Dialog open={!!editUser} onOpenChange={v => !v && setEditUser(null)}>
-                <DialogContent><DialogHeader><DialogTitle>Edit Role — {editUser?.name}</DialogTitle></DialogHeader>
+            <Dialog open={!!editUser} onOpenChange={v => {
+                if (!v) {
+                    setEditUser(null);
+                    setEditRole('');
+                }
+            }}>
+                <DialogContent className="max-w-md bg-white">
+                    <DialogHeader>
+                        <DialogTitle>Edit Role — {editUser?.name}</DialogTitle>
+                    </DialogHeader>
                     {editUser && (
-                        <div className="space-y-4">
-                            <div><label className="text-sm font-medium">Role</label>
-                                <Select value={editRole} onValueChange={setEditRole}>
-                                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                                    <SelectContent>{Object.values(UserRole).filter(r => r !== UserRole.PLATFORM_ADMIN).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                        <div className="space-y-4 pt-2">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Email</label>
+                                <Input value={editUser.email} disabled className="bg-gray-50" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Role</label>
+                                <Select value={editRole || editUser.role} onValueChange={(value) => {
+                                    setEditRole(value);
+                                }}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {Object.values(UserRole).filter(r => r !== UserRole.PLATFORM_ADMIN).map(r => (
+                                            <SelectItem key={r} value={r}>{r}</SelectItem>
+                                        ))}
+                                    </SelectContent>
                                 </Select>
                             </div>
-                            <Button className="w-full" disabled={saving || editRole === editUser.role} onClick={handleEditRoleSave}>
+                            <Button className="w-full text-white" disabled={saving || !editRole || editRole === editUser.role} onClick={handleEditRoleSave}>
                                 {saving ? 'Saving...' : 'Save Changes'}
                             </Button>
                         </div>
@@ -266,12 +314,15 @@ export default function UsersPage() {
 
             {/* Reset Password Modal */}
             <Dialog open={!!resetUser} onOpenChange={v => !v && setResetUser(null)}>
-                <DialogContent><DialogHeader><DialogTitle>Reset Password — {resetUser?.name}</DialogTitle></DialogHeader>
+                <DialogContent className="max-w-md bg-white">
+                    <DialogHeader>
+                        <DialogTitle>Reset Password — {resetUser?.name}</DialogTitle>
+                    </DialogHeader>
                     {resetUser && (
-                        <div className="space-y-4">
-                            <div>
+                        <div className="space-y-4 pt-2">
+                            <div className="space-y-2">
                                 <label className="text-sm font-medium">New Password (min 8 chars)</label>
-                                <PasswordInput className="mt-1" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                                <PasswordInput value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Enter new password" />
                             </div>
                             <Button className="w-full" disabled={newPassword.length < 8 || saving} onClick={handleResetPassword}>
                                 {saving ? 'Resetting...' : 'Reset Password'}

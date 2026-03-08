@@ -185,4 +185,63 @@
   .bg-background {
     z-index: 9999 !important;
   }
+
+  /* Ensure Select dropdown appears above Dialog modals */
+  [data-slot="select-content"] {
+    z-index: 10010 !important;
+    background-color: white !important;
+  }
+
+  /* Ensure Select portal renders above Dialog */
+  [data-radix-select-content] {
+    z-index: 10010 !important;
+    background-color: white !important;
+  }
+
+  /* Radix Select Content */
+  [role="listbox"] {
+    z-index: 10010 !important;
+    background-color: white !important;
+  }
+
+  /* Ensure SelectItem text is dark and readable */
+  [data-slot="select-item"] {
+    color: rgb(17, 24, 39) !important; /* gray-900 */
+  }
+
+  [data-slot="select-item"]:hover {
+    background-color: rgb(243, 244, 246) !important; /* gray-100 */
+  }
+
+  /* Ensure button text is visible - default buttons */
+  [data-slot="button"]:not(:disabled):not([variant="ghost"]):not([variant="outline"]):not([variant="secondary"]):not([variant="link"]) {
+    color: white !important;
+    background-color: hsl(var(--primary)) !important;
+  }
+
+  [data-slot="button"]:not(:disabled):not([variant="ghost"]):not([variant="outline"]):not([variant="secondary"]):not([variant="link"]):hover {
+    background-color: hsl(var(--primary) / 0.9) !important;
+  }
+
+  /* Ensure ghost buttons are visible */
+  [data-slot="button"][variant="ghost"] {
+    color: rgb(55, 65, 81) !important; /* gray-700 */
+  }
+
+  [data-slot="button"][variant="ghost"]:hover {
+    color: rgb(17, 24, 39) !important; /* gray-900 */
+    background-color: rgb(243, 244, 246) !important; /* gray-100 */
+  }
+
+  /* Ensure buttons with explicit bg-primary class are visible */
+  button.bg-primary,
+  [data-slot="button"].bg-primary {
+    background-color: hsl(var(--primary)) !important;
+    color: white !important;
+  }
+
+  button.bg-primary:hover,
+  [data-slot="button"].bg-primary:hover {
+    background-color: hsl(var(--primary) / 0.9) !important;
+  }
 }
