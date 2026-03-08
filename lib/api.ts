@@ -562,6 +562,21 @@ export const glApi = {
         body: JSON.stringify(body),
         headers: { Authorization: `Bearer ${token || getToken() || ""}` },
       }),
+    upload: async (file: File, token?: string): Promise<{ success: boolean; message: string; results?: { total: number; created: number; updated: number; skipped: number; errors: Array<{ code: string; error: string }> }; errors?: Array<{ row: number; error: string }> }> => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const authToken = token || getToken() || "";
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/gl/coa/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${authToken}` },
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Upload failed");
+      }
+      return data;
+    },
   },
   trialBalance: (params?: { period?: string; fromDate?: string; toDate?: string; excludeAuditAdj?: boolean }, token?: string) => {
     const q = new URLSearchParams();

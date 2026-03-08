@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Upload, FileSpreadsheet, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { ChartOfAccount, AccountType } from '@/lib/types/accounting'
 import { formatCurrency } from '@/lib/utils/format'
 import { glApi } from '@/lib/api'
@@ -117,6 +117,10 @@ export default function ChartOfAccountsPage() {
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [addSaving, setAddSaving] = useState(false)
   const [newAccount, setNewAccount] = useState({ code: '', name: '', type: AccountType.ASSET, parentCode: '' })
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadResult, setUploadResult] = useState<{ success: boolean; message: string; results?: any; errors?: any[] } | null>(null)
 
   const fetchAccounts = () => {
     setLoading(true)
@@ -188,6 +192,56 @@ export default function ChartOfAccountsPage() {
     }
   }
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const validTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel', // .xls
+      ]
+      if (!validTypes.includes(file.type)) {
+        toast({ title: 'Invalid File', description: 'Please upload an Excel file (.xlsx or .xls)', variant: 'destructive' })
+        return
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: 'File Too Large', description: 'File size must be less than 5MB', variant: 'destructive' })
+        return
+      }
+      setUploadFile(file)
+      setUploadResult(null)
+    }
+  }
+
+  const handleUpload = async () => {
+    if (!uploadFile) {
+      toast({ title: 'No File', description: 'Please select an Excel file', variant: 'destructive' })
+      return
+    }
+    setUploading(true)
+    setUploadResult(null)
+    try {
+      const result = await glApi.coa.upload(uploadFile)
+      setUploadResult(result)
+      if (result.success) {
+        toast({ title: 'Success', description: result.message || 'Chart of Accounts uploaded successfully' })
+        fetchAccounts()
+        setTimeout(() => {
+          setUploadModalOpen(false)
+          setUploadFile(null)
+          setUploadResult(null)
+        }, 3000)
+      } else {
+        toast({ title: 'Upload Failed', description: result.message || 'Failed to upload Chart of Accounts', variant: 'destructive' })
+      }
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Failed to upload file'
+      setUploadResult({ success: false, message: errorMessage })
+      toast({ title: 'Error', description: errorMessage, variant: 'destructive' })
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const rootAccounts = accounts.filter((a) => !a.parent)
   const filteredRoots = searchTerm
     ? rootAccounts.filter(
@@ -218,6 +272,103 @@ export default function ChartOfAccountsPage() {
             <ChevronDown className="w-4 h-4 mr-2" />
             Expand All
           </Button>
+          <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-2">
+                <Upload className="w-4 h-4" />
+                Upload CoA
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Upload Chart of Accounts</DialogTitle>
+                <DialogDescription>
+                  Upload Chart of Accounts from Excel file as per NABARD/RBI norms (MP, UP, Rajasthan, Chhattisgarh, Maharashtra)
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <Label htmlFor="coa-file">Excel File (.xlsx, .xls)</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      id="coa-file"
+                      type="file"
+                      accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                      onChange={handleFileSelect}
+                      disabled={uploading}
+                      className="cursor-pointer"
+                    />
+                    {uploadFile && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FileSpreadsheet className="w-4 h-4" />
+                        <span>{uploadFile.name}</span>
+                        <span className="text-xs">({(uploadFile.size / 1024).toFixed(2)} KB)</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Expected columns: Code, Name, Type (ASSET/LIABILITY/EQUITY/INCOME/EXPENSE), Parent Code (optional), Schedule (optional), State (optional)
+                  </p>
+                </div>
+                {uploadResult && (
+                  <div className={`p-4 rounded-lg border ${uploadResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                    <div className="flex items-start gap-2">
+                      {uploadResult.success ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                      )}
+                      <div className="flex-1">
+                        <p className={`font-medium ${uploadResult.success ? 'text-green-900' : 'text-red-900'}`}>
+                          {uploadResult.message}
+                        </p>
+                        {uploadResult.results && (
+                          <div className="mt-2 text-sm text-gray-700">
+                            <p>Total: {uploadResult.results.total}</p>
+                            <p>Created: {uploadResult.results.created}</p>
+                            {uploadResult.results.errors && uploadResult.results.errors.length > 0 && (
+                              <div className="mt-2">
+                                <p className="font-medium text-red-700">Errors:</p>
+                                <ul className="list-disc list-inside text-xs">
+                                  {uploadResult.results.errors.slice(0, 5).map((err: any, idx: number) => (
+                                    <li key={idx}>{err.code}: {err.error}</li>
+                                  ))}
+                                  {uploadResult.results.errors.length > 5 && (
+                                    <li>... and {uploadResult.results.errors.length - 5} more</li>
+                                  )}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {uploadResult.errors && uploadResult.errors.length > 0 && (
+                          <div className="mt-2">
+                            <p className="font-medium text-red-700">Validation Errors:</p>
+                            <ul className="list-disc list-inside text-xs max-h-40 overflow-y-auto">
+                              {uploadResult.errors.slice(0, 10).map((err: any, idx: number) => (
+                                <li key={idx}>Row {err.row}: {err.error}</li>
+                              ))}
+                              {uploadResult.errors.length > 10 && (
+                                <li>... and {uploadResult.errors.length - 10} more</li>
+                              )}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setUploadModalOpen(false); setUploadFile(null); setUploadResult(null); }} disabled={uploading}>
+                  Cancel
+                </Button>
+                <Button onClick={handleUpload} disabled={!uploadFile || uploading}>
+                  {uploading ? 'Uploading...' : 'Upload'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
