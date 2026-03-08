@@ -14,7 +14,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Plus, AlertCircle, CheckCircle, Eye, Loader2, RefreshCw } from 'lucide-react';
+import { Plus, AlertCircle, CheckCircle, Eye, Loader2, RefreshCw, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -89,12 +89,23 @@ export default function LoansPage() {
           <Button variant="outline" size="icon" onClick={fetchData} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-          {canCreate && (
-            <Button className="gap-2" onClick={() => router.push('/dashboard/loans/new')}>
-              <Plus className="w-4 h-4" />
-              New Loan Application
+          <div className="flex gap-2">
+            {canCreate && (
+              <>
+                <Button className="gap-2" onClick={() => router.push('/dashboard/loans/new')}>
+                  <Plus className="w-4 h-4" />
+                  New Loan Application
+                </Button>
+                <Button variant="outline" className="gap-2" onClick={() => router.push('/dashboard/loans/group-loans')}>
+                  <Users className="w-4 h-4" />
+                  Group Loans (JLG)
+                </Button>
+              </>
+            )}
+            <Button variant="outline" onClick={() => router.push('/dashboard/loans/npa-recovery')}>
+              NPA Recovery
             </Button>
-          )}
+          </div>
         </div>
       </div>
 
@@ -219,7 +230,7 @@ export default function LoansPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Link href={`/dashboard/approvals`}>
+                            <Link href={`/dashboard/loans/applications/${app.id}`}>
                               <Button variant="ghost" size="sm"><Eye className="w-4 h-4" /></Button>
                             </Link>
                           </TableCell>

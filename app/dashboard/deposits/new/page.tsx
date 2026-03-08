@@ -30,6 +30,23 @@ function getRate(type: string, months: number): number {
     return 7.75;
 }
 
+function getSlabForTenure(type: string, months: number): string | null {
+    if (type === 'FDR') {
+        if (months <= 3) return '1-3';
+        if (months <= 6) return '3-6';
+        if (months <= 12) return '6-12';
+        if (months <= 24) return '12-24';
+        return '24+';
+    }
+    if (type === 'RD') {
+        if (months <= 24) return '12-24';
+        if (months <= 36) return '24-36';
+        return '36-60';
+    }
+    if (type === 'MIS') return '60';
+    return null;
+}
+
 function calcMaturity(amount: number, rate: number, months: number, compound: string): number {
     if (compound === 'Simple') return amount + (amount * rate * months) / 1200;
     const n = compound === 'Monthly' ? 12 : compound === 'Quarterly' ? 4 : 1;
@@ -93,23 +110,35 @@ export default function NewDepositPage() {
         if (!member) return;
         setSubmitting(true);
         try {
-            const res = await depositsApi.create({
+            // Ensure all values are proper numbers
+            const payload = {
                 memberId: member.id,
                 depositType: type === 'FDR' ? 'fd' : type === 'RD' ? 'rd' : 'mis',
-                principal: amount,
-                interestRate: rate,
-                tenureMonths: months,
+                principal: Number(amount),
+                interestRate: Number(rate),
+                tenureMonths: Number(months),
                 compoundingFreq: compoundToApi[compound] || 'quarterly',
-                form15Exempt: form15G,
-            });
+                form15Exempt: Boolean(form15G),
+            };
+            
+            // Validate required fields
+            if (!payload.memberId || !payload.principal || !payload.interestRate || !payload.tenureMonths) {
+                alert('Please fill in all required fields');
+                setSubmitting(false);
+                return;
+            }
+            
+            const res = await depositsApi.create(payload);
             setCreatedDeposit({
                 depositNumber: res.deposit?.depositNumber || `DEP-${Date.now()}`,
                 maturityDate: res.deposit?.maturityDate ? new Date(res.deposit.maturityDate).toISOString() : new Date(Date.now() + months * 30 * 24 * 60 * 60 * 1000).toISOString(),
                 maturityAmount: res.deposit?.maturityAmount ?? maturity,
             });
             setSubmitted(true);
-        } catch (e) {
-            alert((e as Error).message || 'Failed to create deposit');
+        } catch (e: any) {
+            const errorMessage = e?.message || 'Failed to create deposit';
+            console.error('Deposit creation error:', e);
+            alert(errorMessage);
         } finally {
             setSubmitting(false);
         }
@@ -165,12 +194,25 @@ export default function NewDepositPage() {
 
             {/* Deposit type */}
             <div className="grid grid-cols-3 gap-3">
-                {(['FDR', 'RD', 'MIS'] as const).map(t => (
-                    <button key={t} onClick={() => setType(t)} className={`p-4 rounded-lg border text-center transition-all ${type === t ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50'}`}>
-                        <p className="font-bold">{t}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{t === 'FDR' ? 'Fixed Deposit' : t === 'RD' ? 'Recurring Deposit' : 'Monthly Income'}</p>
-                    </button>
-                ))}
+                {(['FDR', 'RD', 'MIS'] as const).map(t => {
+                    const isSelected = type === t;
+                    return (
+                        <button 
+                            key={t} 
+                            onClick={() => setType(t)} 
+                            className={`p-4 rounded-lg border-2 text-center transition-all cursor-pointer ${
+                                isSelected 
+                                    ? 'border-primary bg-primary/20 ring-2 ring-primary ring-offset-2 shadow-md font-semibold' 
+                                    : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                            }`}
+                        >
+                            <p className={`font-bold ${isSelected ? 'text-primary' : ''}`}>{t}</p>
+                            <p className={`text-xs mt-1 ${isSelected ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                                {t === 'FDR' ? 'Fixed Deposit' : t === 'RD' ? 'Recurring Deposit' : 'Monthly Income'}
+                            </p>
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Details */}
@@ -185,10 +227,33 @@ export default function NewDepositPage() {
                     {/* Rate Table */}
                     <div className="p-3 rounded-lg bg-muted/30 border border-border">
                         <p className="text-xs font-semibold text-muted-foreground mb-2">APPLICABLE RATES</p>
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                            {Object.entries(RATE_SLABS[type]).map(([slab, r]) => (
-                                <div key={slab} className={`p-2 rounded text-center ${rate === r || rate === r + 0.5 ? 'bg-primary/20 border border-primary font-bold text-primary' : 'bg-card border border-border'}`}><p>{slab}m</p><p className="font-semibold">{r}%</p></div>
-                            ))}
+                        <div className={`grid gap-2 text-xs ${type === 'FDR' ? 'grid-cols-5' : 'grid-cols-3'}`}>
+                            {Object.entries(RATE_SLABS[type]).map(([slab, r]) => {
+                                const isSelected = getSlabForTenure(type, months) === slab;
+                                return (
+                                    <div 
+                                        key={slab} 
+                                        className={`p-2 rounded text-center transition-all cursor-pointer ${isSelected ? 'bg-primary/20 border-2 border-primary font-bold text-primary shadow-sm' : 'bg-card border border-border hover:border-primary/50'}`}
+                                        onClick={() => {
+                                            // Allow clicking to set tenure based on slab
+                                            if (type === 'FDR') {
+                                                if (slab === '1-3') setMonths(3);
+                                                else if (slab === '3-6') setMonths(6);
+                                                else if (slab === '6-12') setMonths(12);
+                                                else if (slab === '12-24') setMonths(24);
+                                                else if (slab === '24+') setMonths(25);
+                                            } else if (type === 'RD') {
+                                                if (slab === '12-24') setMonths(24);
+                                                else if (slab === '24-36') setMonths(36);
+                                                else if (slab === '36-60') setMonths(60);
+                                            }
+                                        }}
+                                    >
+                                        <p>{slab}m</p>
+                                        <p className="font-semibold">{r}%</p>
+                                    </div>
+                                );
+                            })}
                         </div>
                         <p className="text-xs text-center mt-2 text-primary font-semibold">Applicable Rate: {rate}% p.a.{seniorCitizen && isEligibleSC ? ' (SC +0.50%)' : ''}</p>
                     </div>

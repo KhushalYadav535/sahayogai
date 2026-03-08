@@ -9,10 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
-import { CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle, ArrowRight, Loader2, Calendar } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
 export default function PortalLoansPage() {
+    const router = useRouter();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [payOpen, setPayOpen] = useState(false);
@@ -37,16 +39,43 @@ export default function PortalLoansPage() {
 
                 if (isMounted) {
                     if (loansRes.success && loansRes.loans) {
-                        setMyLoans(loansRes.loans.map((l: any) => ({
-                            id: l.loanNumber || l.id.slice(0, 8).toUpperCase(),
-                            apiId: l.id,
-                            type: l.loanType || 'Loan',
-                            outstanding: Number(l.outstandingPrincipal) || 0,
-                            emi: 0, // Would ideally come from /me/loans/:id/schedule, keeping 0 for now as per original code
-                            nextDueDate: new Date(),
-                            overdueDays: 0,
-                            status: l.status || 'ACTIVE',
-                        })));
+                        // Fetch EMI schedule for each loan to get next due date and EMI amount
+                        const loansWithSchedule = await Promise.all(
+                            loansRes.loans.map(async (l: any) => {
+                                try {
+                                    const scheduleRes = await meApi.loanSchedule(l.id);
+                                    const schedule = scheduleRes.success ? scheduleRes.loan?.emiSchedule || [] : [];
+                                    const nextPendingEmi = schedule.find((e: any) => e.status === 'pending' || e.status === 'overdue');
+                                    const overdueEmis = schedule.filter((e: any) => {
+                                        const dueDate = new Date(e.dueDate);
+                                        return dueDate < new Date() && e.status !== 'paid';
+                                    });
+                                    
+                                    return {
+                                        id: l.loanNumber || l.id.slice(0, 8).toUpperCase(),
+                                        apiId: l.id,
+                                        type: l.loanType || 'Loan',
+                                        outstanding: Number(l.outstandingPrincipal) || 0,
+                                        emi: nextPendingEmi ? Number(nextPendingEmi.totalEmi || 0) : 0,
+                                        nextDueDate: nextPendingEmi ? new Date(nextPendingEmi.dueDate) : new Date(),
+                                        overdueDays: overdueEmis.length > 0 ? Math.ceil((new Date().getTime() - new Date(overdueEmis[0].dueDate).getTime()) / (1000 * 60 * 60 * 24)) : 0,
+                                        status: l.status || 'ACTIVE',
+                                    };
+                                } catch {
+                                    return {
+                                        id: l.loanNumber || l.id.slice(0, 8).toUpperCase(),
+                                        apiId: l.id,
+                                        type: l.loanType || 'Loan',
+                                        outstanding: Number(l.outstandingPrincipal) || 0,
+                                        emi: 0,
+                                        nextDueDate: new Date(),
+                                        overdueDays: 0,
+                                        status: l.status || 'ACTIVE',
+                                    };
+                                }
+                            })
+                        );
+                        setMyLoans(loansWithSchedule);
                     }
 
                     if (depsRes.success && depsRes.deposits) {
@@ -157,12 +186,21 @@ export default function PortalLoansPage() {
                                         </Alert>
                                     )}
 
-                                    <Button
-                                        className="w-full sm:w-auto mt-2"
-                                        onClick={() => { setSelectedLoan(loan); setPayOpen(true); }}
-                                    >
-                                        Pay EMI Now <ArrowRight className="w-4 h-4 ml-2" />
-                                    </Button>
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        <Button
+                                            variant="outline"
+                                            className="flex-1 sm:flex-none"
+                                            onClick={() => router.push(`/member-portal/loans/${loan.apiId}`)}
+                                        >
+                                            View EMI Schedule
+                                        </Button>
+                                        <Button
+                                            className="flex-1 sm:flex-none"
+                                            onClick={() => { setSelectedLoan(loan); setPayOpen(true); }}
+                                        >
+                                            Pay EMI Now <ArrowRight className="w-4 h-4 ml-2" />
+                                        </Button>
+                                    </div>
                                 </CardContent>
                             </Card>
                         ))}

@@ -121,9 +121,13 @@ export default function AccountsPage() {
               <Plus className="w-4 h-4 mr-2" />
               Open Account
             </Button>
-            <Button onClick={() => router.push('/dashboard/accounts/deposit')}>
+            <Button onClick={() => router.push('/dashboard/deposits/new')}>
               <Plus className="w-4 h-4 mr-2" />
               New Deposit
+            </Button>
+            <Button variant="outline" onClick={() => router.push('/dashboard/accounts/dividend')}>
+              <Plus className="w-4 h-4 mr-2" />
+              Bulk Dividend
             </Button>
           </div>
         )}

@@ -5,223 +5,245 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
-import { ArrowLeft, Calendar, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
-import { createPortal } from 'react-dom';
+import { ArrowLeft, Calendar, RefreshCw, CreditCard, AlertTriangle, CheckCircle } from 'lucide-react';
 import { depositsApi } from '@/lib/api';
-import { useAuth } from '@/components/providers/auth-provider';
-
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 export default function MaturityProcessingPage() {
     const router = useRouter();
-    const { user, isAuthenticated } = useAuth();
-    const [filter, setFilter] = useState<'all' | '7' | '30' | '90'>('30');
-    const [selected, setSelected] = useState<Record<string, boolean>>({});
-    const [actions, setActions] = useState<Record<string, string>>({});
-    const [renewRates, setRenewRates] = useState<Record<string, number>>({});
-    const [processOpen, setProcessOpen] = useState(false);
-    const [processing, setProcessing] = useState(false);
-    const [done, setDone] = useState(false);
-    const [maturingDeposits, setMaturingDeposits] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [days, setDays] = useState(30);
+    const [deposits, setDeposits] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [processing, setProcessing] = useState<string | null>(null);
+    const [maturityDialog, setMaturityDialog] = useState<{ open: boolean; deposit: any | null; action: 'credit_to_sb' | 'auto_renew' | null }>({
+        open: false,
+        deposit: null,
+        action: null,
+    });
 
-    // Redirect if not authenticated
     useEffect(() => {
-        if (!isAuthenticated) {
-            router.push('/login');
-        }
-    }, [isAuthenticated, router]);
+        fetchMaturing();
+    }, [days]);
 
-    const today = new Date();
-    const cutoff = new Date(); cutoff.setDate(today.getDate() + (filter === '7' ? 7 : filter === '30' ? 30 : filter === '90' ? 90 : 9999));
-    const filtered = maturingDeposits.filter(d => new Date(d.maturityDate) <= cutoff);
-    const selectedIds = Object.entries(selected).filter(([, v]) => v).map(([id]) => id);
-    const selectedDeposits = filtered.filter(d => selectedIds.includes(d.id));
-
-    // Fetch maturing deposits
-    useEffect(() => {
-        if (!isAuthenticated) return; // Don't fetch if not authenticated
-        
-        const fetchMaturingDeposits = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const days = filter === 'all' ? 365 : parseInt(filter);
-                const response = await depositsApi.getMaturing(days);
-                setMaturingDeposits(response.deposits || []);
-            } catch (err: any) {
-                if (err.message.includes('401') || err.message.includes('Unauthorized')) {
-                    setError('Authentication failed. Please log in again.');
-                    // Redirect to login after a short delay
-                    setTimeout(() => {
-                        router.push('/login');
-                    }, 2000);
-                } else {
-                    setError(err instanceof Error ? err.message : 'Failed to fetch maturing deposits');
-                }
-                setMaturingDeposits([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchMaturingDeposits();
-    }, [filter, isAuthenticated, router]);
-
-    const handleProcess = async () => {
-        setProcessing(true);
+    const fetchMaturing = async () => {
+        setLoading(true);
         try {
-            // Process each selected deposit based on action
-            const processPromises = selectedDeposits.map(async (deposit) => {
-                const action = actions[deposit.id];
-                if (action === 'Payout' || action === 'Part-Renew') {
-                    // Call mature API for payout
-                    return await depositsApi.mature(deposit.id);
-                }
-                // TODO: Implement renewal logic
-                return { success: true, message: 'Renewal not implemented yet' };
-            });
-            
-            await Promise.all(processPromises);
-            setDone(true);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to process deposits');
+            const res = await depositsApi.getMaturing(days);
+            setDeposits(res.deposits || []);
+        } catch {
+            setDeposits([]);
         } finally {
-            setProcessing(false);
+            setLoading(false);
+        }
+    };
+
+    const handleMature = async () => {
+        if (!maturityDialog.deposit || !maturityDialog.action) return;
+        
+        setProcessing(maturityDialog.deposit.id);
+        try {
+            await depositsApi.mature(maturityDialog.deposit.id, { action: maturityDialog.action });
+            alert('Deposit matured successfully');
+            setMaturityDialog({ open: false, deposit: null, action: null });
+            fetchMaturing();
+        } catch (e: any) {
+            alert(e.message || 'Failed to process maturity');
+        } finally {
+            setProcessing(null);
         }
     };
 
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="w-4 h-4" /></Button>
-                <div><h1 className="text-2xl font-bold flex items-center gap-2"><Calendar className="w-6 h-6" /> Maturity Processing Queue</h1>
-                    <p className="text-muted-foreground text-sm">Process FDR/RD deposits reaching maturity</p></div>
+                <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                    <ArrowLeft className="w-4 h-4" />
+                </Button>
+                <div className="flex-1">
+                    <h1 className="text-2xl font-bold">Maturity Processing</h1>
+                    <p className="text-muted-foreground text-sm">Process deposits maturing soon</p>
+                </div>
             </div>
 
-            {done ? (
-                <Card><CardContent className="pt-6 text-center py-10 space-y-4">
-                    <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
-                    <h2 className="text-xl font-bold">Maturity Processing Complete</h2>
-                    <p className="text-muted-foreground">{selectedDeposits.length} deposit(s) processed successfully.</p>
-                    <Button onClick={() => router.push('/dashboard/deposits')}>Back to Deposits</Button>
-                </CardContent></Card>
-            ) : (
-                <>
-                    {/* Filter */}
-                    <div className="flex gap-2 flex-wrap items-center">
-                        {(['7', '30', '90', 'all'] as const).map((val) => {
-                            const labels: Record<string, string> = { '7': 'Next 7 Days', '30': 'Next 30 Days', '90': 'Next 90 Days', all: 'All Upcoming' };
-                            return (
-                                <button key={val} onClick={() => setFilter(val)} className={`px-4 py-2 rounded-lg text-sm border transition-colors ${filter === val ? 'bg-primary/10 border-primary text-primary font-medium' : 'border-border hover:border-primary/50'}`}>{labels[val]}</button>
-                            );
-                        })}
-                        <Button variant="outline" size="sm" onClick={() => window.location.reload()} disabled={loading}>
-                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                        </Button>
+            {/* Filter */}
+            <Card>
+                <CardContent className="pt-4">
+                    <div className="flex items-center gap-3">
+                        <Label>Show deposits maturing in:</Label>
+                        {[7, 15, 30, 60].map(d => (
+                            <Button
+                                key={d}
+                                variant={days === d ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setDays(d)}
+                            >
+                                {d} days
+                            </Button>
+                        ))}
                     </div>
+                </CardContent>
+            </Card>
 
-                    {error && (
-                        <Alert className="border-red-200 bg-red-50 dark:bg-red-950">
-                            <AlertTriangle className="h-4 w-4 text-red-600" />
-                            <AlertDescription className="text-red-700">{error}</AlertDescription>
-                        </Alert>
-                    )}
-
-                    <Card>
-                        <CardHeader><CardTitle className="flex items-center justify-between"><span>{loading ? 'Loading...' : `${filtered.length} Deposits Maturing`}</span>
-                            <Button disabled={selectedIds.length === 0 || loading} onClick={() => setProcessOpen(true)}>Process {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}</Button>
-                        </CardTitle></CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-10"><Checkbox checked={filtered.length > 0 && filtered.every(d => selected[d.id])} onCheckedChange={v => { const s: Record<string, boolean> = {}; filtered.forEach(d => { s[d.id] = !!v; }); setSelected(s); }} /></TableHead>
-                                        <TableHead>Deposit No</TableHead><TableHead>Member</TableHead><TableHead>Type</TableHead>
-                                        <TableHead className="text-right">Principal</TableHead><TableHead className="text-right">To Pay</TableHead>
-                                        <TableHead>Maturity Date</TableHead><TableHead>Action</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filtered.map(d => {
-                                        const days = Math.ceil((new Date(d.maturityDate).getTime() - today.getTime()) / 86400000);
-                                        const memberName = d.member ? `${d.member.firstName} ${d.member.lastName}` : 'Unknown Member';
-                                        const totalInterest = Number(d.accruedInterest) || 0;
-                                        const maturityAmount = Number(d.maturityAmount) || (Number(d.principal) + totalInterest);
-                                        const availableOptions = ['Payout']; // TODO: Add renewal options based on business logic
-                                        
-                                        return (
-                                            <TableRow key={d.id} className={days <= 7 ? 'bg-amber-50 dark:bg-amber-950' : ''}>
-                                                <TableCell><Checkbox checked={!!selected[d.id]} onCheckedChange={v => setSelected(prev => ({ ...prev, [d.id]: !!v }))} /></TableCell>
-                                                <TableCell className="font-mono text-xs">{d.depositNumber}</TableCell>
-                                                <TableCell><p className="font-medium">{memberName}</p></TableCell>
-                                                <TableCell><Badge variant="outline">{d.depositType.toUpperCase()}</Badge></TableCell>
-                                                <TableCell className="text-right">{formatCurrency(Number(d.principal), 0)}</TableCell>
-                                                <TableCell className="text-right font-bold text-primary">{formatCurrency(maturityAmount)}</TableCell>
-                                                <TableCell>
-                                                    <p>{formatDate(new Date(d.maturityDate))}</p>
-                                                    <p className={`text-xs ${days <= 7 ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>{days <= 0 ? 'MATURED' : `in ${days} days`}</p>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex gap-1">
-                                                        {availableOptions.map(opt => (
-                                                            <button key={opt} onClick={() => setActions(prev => ({ ...prev, [d.id]: opt }))} className={`px-2 py-1 text-xs rounded border transition-colors ${actions[d.id] === opt ? 'bg-primary/10 border-primary text-primary font-medium' : 'border-border hover:border-primary/50'}`}>{opt}</button>
-                                                        ))}
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                </>
-            )}
-
-            {typeof window !== 'undefined' && createPortal(
-                <Dialog open={processOpen} onOpenChange={setProcessOpen}>
-                    <DialogContent 
-                        className="z-[9999]" 
-                        style={{ zIndex: 9999, position: 'relative' }}
-                    >
-                        <DialogHeader>
-                            <DialogTitle>Confirm Maturity Processing</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-3 text-sm">
-                            <Alert>
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertDescription className="text-xs">
-                                    This will submit all selected deposits for Checker approval. Amounts will be posted after approval.
-                                </AlertDescription>
-                            </Alert>
-                            {selectedDeposits.map(d => {
-                                const memberName = d.member ? `${d.member.firstName} ${d.member.lastName}` : 'Unknown Member';
-                                const totalInterest = Number(d.accruedInterest) || 0;
-                                const maturityAmount = Number(d.maturityAmount) || (Number(d.principal) + totalInterest);
+            {/* Maturing Deposits */}
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <CardTitle>Deposits Maturing in Next {days} Days</CardTitle>
+                        <Badge className="bg-primary text-primary-foreground">{deposits.length} deposits</Badge>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {loading ? (
+                        <p className="text-muted-foreground py-8 text-center">Loading...</p>
+                    ) : deposits.length === 0 ? (
+                        <div className="py-12 text-center">
+                            <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                            <p className="text-muted-foreground">No deposits maturing in the next {days} days</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {deposits.map(d => {
+                                const maturityDate = d.maturityDate ? new Date(d.maturityDate) : null;
+                                const daysUntilMaturity = maturityDate 
+                                    ? Math.floor((maturityDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                                    : 0;
+                                const memberName = d.member ? `${d.member.firstName} ${d.member.lastName}` : 'Unknown';
                                 
                                 return (
-                                    <div key={d.id} className="flex justify-between p-3 rounded-lg border border-border">
-                                        <div>
-                                            <p className="font-medium">{d.depositNumber}</p>
-                                            <p className="text-xs text-muted-foreground">{memberName} • {actions[d.id] || 'No action selected'}</p>
+                                    <div key={d.id} className="p-4 border border-border rounded-lg hover:bg-muted/50">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="font-mono font-bold">{d.depositNumber}</span>
+                                                    <Badge variant="outline">{d.depositType.toUpperCase()}</Badge>
+                                                    <Badge className={daysUntilMaturity <= 7 ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}>
+                                                        {daysUntilMaturity} days
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground mb-1">{memberName}</p>
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-3">
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">Principal</p>
+                                                        <p className="font-medium">{formatCurrency(Number(d.principal), 0)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">Maturity Amount</p>
+                                                        <p className="font-medium text-primary">{formatCurrency(Number(d.maturityAmount) || 0)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">Maturity Date</p>
+                                                        <p className="font-medium">{maturityDate ? formatDate(maturityDate) : '-'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">Rate</p>
+                                                        <p className="font-medium">{Number(d.interestRate)}% p.a.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                onClick={() => setMaturityDialog({ open: true, deposit: d, action: null })}
+                                                disabled={processing === d.id}
+                                                className="ml-4"
+                                            >
+                                                {processing === d.id ? 'Processing...' : 'Process Maturity'}
+                                            </Button>
                                         </div>
-                                        <p className="font-bold text-primary">{formatCurrency(maturityAmount)}</p>
                                     </div>
                                 );
                             })}
                         </div>
-                        <Button className="w-full mt-4" disabled={processing} onClick={handleProcess}>
-                            {processing ? 'Processing...' : 'Confirm & Submit'}
-                        </Button>
-                    </DialogContent>
-                </Dialog>,
-                document.body
-            )}
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Maturity Action Dialog */}
+            <Dialog open={maturityDialog.open} onOpenChange={(open) => setMaturityDialog({ open, deposit: null, action: null })}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Process Maturity</DialogTitle>
+                    </DialogHeader>
+                    {maturityDialog.deposit && (
+                        <div className="space-y-4">
+                            <Alert>
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertDescription className="text-xs">
+                                    Deposit {maturityDialog.deposit.depositNumber} is maturing. Choose action:
+                                </AlertDescription>
+                            </Alert>
+
+                            <RadioGroup
+                                value={maturityDialog.action || ''}
+                                onValueChange={(value) => setMaturityDialog({ ...maturityDialog, action: value as any })}
+                            >
+                                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
+                                    <RadioGroupItem value="credit_to_sb" id="credit_to_sb" />
+                                    <Label htmlFor="credit_to_sb" className="flex-1 cursor-pointer">
+                                        <div className="flex items-center gap-2">
+                                            <CreditCard className="w-4 h-4" />
+                                            <div>
+                                                <p className="font-medium">Credit to SB Account</p>
+                                                <p className="text-xs text-muted-foreground">Principal + Interest will be credited to member's SB account</p>
+                                            </div>
+                                        </div>
+                                    </Label>
+                                </div>
+                                {maturityDialog.deposit.depositType === 'fd' && (
+                                    <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
+                                        <RadioGroupItem value="auto_renew" id="auto_renew" />
+                                        <Label htmlFor="auto_renew" className="flex-1 cursor-pointer">
+                                            <div className="flex items-center gap-2">
+                                                <RefreshCw className="w-4 h-4" />
+                                                <div>
+                                                    <p className="font-medium">Auto-Renew</p>
+                                                    <p className="text-xs text-muted-foreground">Create new FDR with same tenure at current rate</p>
+                                                </div>
+                                            </div>
+                                        </Label>
+                                    </div>
+                                )}
+                            </RadioGroup>
+
+                            {maturityDialog.action && (
+                                <div className="p-3 bg-muted rounded-lg space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Principal</span>
+                                        <span className="font-medium">{formatCurrency(Number(maturityDialog.deposit.principal), 0)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Interest</span>
+                                        <span className="font-medium text-green-600">{formatCurrency(Number(maturityDialog.deposit.accruedInterest) || 0)}</span>
+                                    </div>
+                                    <div className="flex justify-between border-t pt-2 font-bold">
+                                        <span>Total</span>
+                                        <span className="text-primary">{formatCurrency(Number(maturityDialog.deposit.maturityAmount) || 0)}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={() => setMaturityDialog({ open: false, deposit: null, action: null })}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    className="flex-1"
+                                    onClick={handleMature}
+                                    disabled={!maturityDialog.action || processing === maturityDialog.deposit.id}
+                                >
+                                    {processing === maturityDialog.deposit.id ? 'Processing...' : 'Confirm'}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

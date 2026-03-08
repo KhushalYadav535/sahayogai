@@ -4,11 +4,12 @@ import React, { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Wallet, DollarSign, FileText, Phone, Download, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Wallet, DollarSign, FileText, Phone, Download, Eye, EyeOff, Loader2, Calendar } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
 import { meApi } from '@/lib/api'
 import Link from 'next/link'
 import { useToast } from '@/hooks/use-toast'
+import { ChatWidget } from '@/components/ai/chat-widget'
 
 export default function MemberPortalHomePage() {
   const { toast } = useToast()
@@ -172,7 +173,30 @@ export default function MemberPortalHomePage() {
             { icon: DollarSign, label: 'Pay EMI / Transfer', href: '/portal/pay' },
             { icon: FileText, label: 'Passbook & Txns', href: '/portal/account' },
             { icon: DollarSign, label: 'My Loans', href: '/portal/loans' },
-            { icon: Phone, label: 'Society Support', href: '#' },
+            { icon: Phone, label: 'Society Support', href: '/member-portal/grievance' },
+          ].map((action, idx) => {
+            const Icon = action.icon
+            return (
+              <Button key={idx} variant="outline" className="h-20 flex-col gap-2 bg-background hover:bg-accent/50 hover:border-primary/50 transition-all shadow-sm" asChild>
+                <Link href={action.href}>
+                  <Icon className="w-5 h-5 text-primary" />
+                  <span className="text-xs font-semibold">{action.label}</span>
+                </Link>
+              </Button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Additional Features */}
+      <div className="max-w-3xl mx-auto mb-8">
+        <h2 className="text-lg font-semibold mb-3 px-1 text-foreground/80">More Features</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { icon: Calendar, label: 'FDR Maturity', href: '/member-portal/deposits/maturity' },
+            { icon: FileText, label: 'Share Certificate', href: '/member-portal/shares/certificate' },
+            { icon: Phone, label: 'Notifications', href: '/member-portal/notifications' },
+            { icon: FileText, label: 'Grievance', href: '/member-portal/grievance' },
           ].map((action, idx) => {
             const Icon = action.icon
             return (
@@ -222,6 +246,9 @@ export default function MemberPortalHomePage() {
           )}
         </Card>
       </div>
+
+      {/* Sahayog Saathi Chat Widget */}
+      <ChatWidget />
     </div>
   )
 }

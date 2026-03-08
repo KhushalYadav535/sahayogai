@@ -50,9 +50,17 @@ export default function DepositsPage() {
                     <h1 className="text-2xl font-bold">Deposits</h1>
                     <p className="text-muted-foreground text-sm">FDR, RD & MIS accounts</p>
                 </div>
-                <Button asChild className="gap-2">
-                    <Link href="/dashboard/deposits/new"><Plus className="w-4 h-4" />New Deposit</Link>
-                </Button>
+                <div className="flex gap-2">
+                    <Button asChild variant="outline" className="gap-2">
+                        <Link href="/dashboard/deposits/analytics">Analytics</Link>
+                    </Button>
+                    <Button asChild variant="outline" className="gap-2">
+                        <Link href="/dashboard/deposits/maturity">Maturity</Link>
+                    </Button>
+                    <Button asChild className="gap-2">
+                        <Link href="/dashboard/deposits/new"><Plus className="w-4 h-4" />New Deposit</Link>
+                    </Button>
+                </div>
             </div>
 
             <Card>

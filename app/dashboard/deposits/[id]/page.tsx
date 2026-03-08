@@ -16,6 +16,8 @@ export default function DepositDetailPage({ params }: { params: { id: string } }
     const router = useRouter();
     const [certOpen, setCertOpen] = useState(false);
     const [prematureOpen, setPrematureOpen] = useState(false);
+    const [prematureData, setPrematureData] = useState<any>(null);
+    const [loadingPremature, setLoadingPremature] = useState(false);
     const [deposit, setDeposit] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -127,36 +129,110 @@ export default function DepositDetailPage({ params }: { params: { id: string } }
 
             {/* FDR Certificate */}
             <Dialog open={certOpen} onOpenChange={setCertOpen}>
-                <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>FDR Certificate</DialogTitle></DialogHeader>
-                    <div className="border border-border rounded-lg p-6 space-y-4 text-sm">
-                        <div className="text-center border-b border-border pb-4">
-                            <p className="text-lg font-bold">Sahayog AI Cooperative Society</p>
-                            <p className="text-xs text-muted-foreground">Registered under Maharashtra Co-op Act</p>
-                            <p className="text-base font-bold mt-2">FIXED DEPOSIT RECEIPT</p>
-                            <p className="font-mono text-xs text-primary mt-1">Certificate No: {deposit.depositNumber}</p>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                    <DialogHeader><DialogTitle>FDR Certificate</DialogTitle></DialogHeader>
+                    <div className="space-y-4">
+                        <iframe 
+                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/v1/deposits/${params.id}/certificate`}
+                            className="w-full h-[600px] border border-border rounded-lg"
+                            title="FDR Certificate"
+                        />
+                        <div className="flex gap-3">
+                            <Button className="flex-1" onClick={async () => {
+                                try {
+                                    const blob = await depositsApi.getCertificate(params.id);
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `FDR_Certificate_${deposit.depositNumber}.html`;
+                                    a.click();
+                                    URL.revokeObjectURL(url);
+                                } catch (e) {
+                                    alert('Failed to download certificate');
+                                }
+                            }}>
+                                <Printer className="w-4 h-4 mr-2" /> Download Certificate
+                            </Button>
+                            <Button variant="outline" className="flex-1" onClick={() => {
+                                const iframe = document.querySelector('iframe');
+                                if (iframe) iframe.contentWindow?.print();
+                            }}>
+                                <Printer className="w-4 h-4 mr-2" /> Print
+                            </Button>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            {[['Member Name', memberName], ['Amount', formatCurrency(principal, 0)], ['Rate of Interest', deposit.interestRate + '% p.a.'], ['Tenure', deposit.tenureMonths + ' months'], ['Issue Date', formatDate(startDate)], ['Maturity Date', formatDate(maturityDate)], ['Maturity Amount', formatCurrency(maturityAmount)]].map(([k, v]) => (
-                                <div key={k}><p className="text-xs text-muted-foreground">{k}</p><p className="font-semibold">{v}</p></div>
-                            ))}
-                        </div>
-                        <p className="text-xs text-muted-foreground border-t border-border pt-3">This certificate is computer generated and does not require signature. Subject to terms and conditions.</p>
                     </div>
-                    <Button className="w-full" onClick={() => window.print()}><Printer className="w-4 h-4 mr-2" /> Print / Download PDF</Button>
                 </DialogContent>
             </Dialog>
 
             {/* Premature Withdrawal */}
             <Dialog open={prematureOpen} onOpenChange={setPrematureOpen}>
-                <DialogContent><DialogHeader><DialogTitle>Premature Withdrawal Confirmation</DialogTitle></DialogHeader>
-                    <div className="space-y-3 text-sm">
-                        <Alert className="border-red-200 bg-red-50 dark:bg-red-950"><AlertTriangle className="h-4 w-4 text-red-600" /><AlertDescription className="text-red-700 text-xs">Early withdrawal attracts a penalty of 10% on interest earned.</AlertDescription></Alert>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Principal</span><span>{formatCurrency(principal, 0)}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Interest Earned</span><span className="text-green-600">{formatCurrency(interest)}</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Penalty (10%)</span><span className="text-red-600">- {formatCurrency(penaltyAmt)}</span></div>
-                        <div className="flex justify-between border-t border-border pt-2 font-bold text-base"><span>Net Payable</span><span className="text-primary">{formatCurrency(principal + interest - penaltyAmt)}</span></div>
-                    </div>
-                    <Button variant="destructive" className="w-full mt-4" onClick={() => setPrematureOpen(false)}>Confirm Premature Withdrawal</Button>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Premature Withdrawal Confirmation</DialogTitle></DialogHeader>
+                    {loadingPremature ? (
+                        <div className="py-8 text-center text-muted-foreground">Calculating penalty...</div>
+                    ) : prematureData ? (
+                        <div className="space-y-4">
+                            <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950">
+                                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                                <AlertDescription className="text-amber-700 text-xs">
+                                    Premature withdrawal penalty: {prematureData.penaltyRate}% (Holding period: {prematureData.holdingMonths} months)
+                                </AlertDescription>
+                            </Alert>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between"><span className="text-muted-foreground">Principal</span><span className="font-medium">{formatCurrency(prematureData.principal, 0)}</span></div>
+                                <div className="flex justify-between"><span className="text-muted-foreground">Holding Period</span><span>{prematureData.holdingMonths} months</span></div>
+                                <div className="flex justify-between"><span className="text-muted-foreground">Penalty Rate</span><span className="text-red-600">{prematureData.penaltyRate}%</span></div>
+                                <div className="flex justify-between"><span className="text-muted-foreground">Interest at Penalized Rate</span><span className="text-green-600">{formatCurrency(prematureData.totalInterest)}</span></div>
+                                <div className="flex justify-between"><span className="text-muted-foreground">TDS Deducted</span><span className="text-red-600">- {formatCurrency(prematureData.tdsDeducted || 0)}</span></div>
+                                <div className="flex justify-between border-t border-border pt-2 font-bold text-base">
+                                    <span>Net Payable</span>
+                                    <span className="text-primary">{formatCurrency(prematureData.netPayable)}</span>
+                                </div>
+                            </div>
+                            <Button 
+                                variant="destructive" 
+                                className="w-full mt-4" 
+                                onClick={async () => {
+                                    try {
+                                        await depositsApi.withdraw(params.id);
+                                        alert('Premature withdrawal processed successfully');
+                                        setPrematureOpen(false);
+                                        router.refresh();
+                                    } catch (e: any) {
+                                        alert(e.message || 'Failed to process withdrawal');
+                                    }
+                                }}
+                            >
+                                Confirm Premature Withdrawal
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            <Alert className="border-red-200 bg-red-50 dark:bg-red-950">
+                                <AlertTriangle className="h-4 w-4 text-red-600" />
+                                <AlertDescription className="text-red-700 text-xs">
+                                    Premature withdrawal will attract penalty based on holding period. Click below to calculate.
+                                </AlertDescription>
+                            </Alert>
+                            <Button 
+                                className="w-full" 
+                                onClick={async () => {
+                                    setLoadingPremature(true);
+                                    try {
+                                        const res = await depositsApi.withdraw(params.id);
+                                        setPrematureData(res);
+                                    } catch (e: any) {
+                                        alert(e.message || 'Failed to calculate penalty');
+                                        setPrematureOpen(false);
+                                    } finally {
+                                        setLoadingPremature(false);
+                                    }
+                                }}
+                            >
+                                Calculate Penalty & Net Payable
+                            </Button>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </div>

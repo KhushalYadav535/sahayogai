@@ -164,10 +164,13 @@ export default function GovernancePage() {
 
       {/* Tabbed view */}
       <Tabs defaultValue="compliance" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full">
-          <TabsTrigger value="compliance">Compliance Calendar</TabsTrigger>
-          <TabsTrigger value="agm">AGM & Meetings</TabsTrigger>
-          <TabsTrigger value="board">Board & Directors</TabsTrigger>
+        <TabsList className="grid grid-cols-6 w-full">
+          <TabsTrigger value="compliance">Compliance</TabsTrigger>
+          <TabsTrigger value="agm">AGM</TabsTrigger>
+          <TabsTrigger value="board">BOD</TabsTrigger>
+          <TabsTrigger value="resolutions">Resolutions</TabsTrigger>
+          <TabsTrigger value="bylaws">By-laws</TabsTrigger>
+          <TabsTrigger value="approvals">Approvals</TabsTrigger>
         </TabsList>
 
         {/* Compliance Calendar Tab */}
@@ -293,8 +296,15 @@ export default function GovernancePage() {
         <TabsContent value="board" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Board of Directors</CardTitle>
-              <CardDescription>Current board members and their terms</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Board of Directors</CardTitle>
+                  <CardDescription>Current board members and their terms</CardDescription>
+                </div>
+                <Button onClick={() => router.push('/dashboard/governance/bod')}>
+                  Manage BOD
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {directors.length > 0 ? (
@@ -314,6 +324,69 @@ export default function GovernancePage() {
                   <p>No BOD members. Add directors to get started.</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Resolutions Tab */}
+        <TabsContent value="resolutions">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Resolutions</CardTitle>
+                  <CardDescription>Search and manage all society resolutions</CardDescription>
+                </div>
+                <Button onClick={() => router.push('/dashboard/governance/resolutions')}>
+                  View All
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Use the "View All" button to access the full resolution repository with search and filters.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* By-laws Tab */}
+        <TabsContent value="bylaws">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>By-law Repository</CardTitle>
+                  <CardDescription>Version-controlled document repository</CardDescription>
+                </div>
+                <Button onClick={() => router.push('/dashboard/governance/bylaws')}>
+                  Manage By-laws
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Use the "Manage By-laws" button to upload and manage by-law versions.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Approvals Tab */}
+        <TabsContent value="approvals">
+          <Card>
+            <CardHeader>
+              <CardTitle>Approval System</CardTitle>
+              <CardDescription>Maker-checker hierarchy and override tracking</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Button variant="outline" onClick={() => router.push('/dashboard/governance/approvals/thresholds')}>
+                  Configure Thresholds
+                </Button>
+                <Button variant="outline" onClick={() => router.push('/dashboard/governance/approvals/overrides')}>
+                  View Overrides
+                </Button>
+                <Button variant="outline" onClick={() => router.push('/dashboard/governance/meetings/minutes')}>
+                  Meeting Minutes
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

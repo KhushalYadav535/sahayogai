@@ -16,8 +16,9 @@ import { RiskScorePanel } from '@/components/ai/risk-score-panel';
 import { formatCurrency } from '@/lib/utils/formatters';
 import {
   ArrowLeft, ArrowRight, Search, User, CheckCircle, AlertTriangle,
-  Upload, Zap, FileText, Users, Info
+  Upload, Zap, FileText, Users, Info, Shield
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const STEPS = ['Member & Product', 'Loan Details', 'Guarantor', 'Documents', 'AI Risk Assessment', 'Review & Submit'];
 
@@ -48,6 +49,7 @@ function calcEMI(P: number, annualRate: number, months: number): number {
 export default function NewLoanPage() {
   const router = useRouter();
   const { hasPermission } = useAuth();
+  const { toast } = useToast();
   const [step, setStep] = useState(0);
 
   // Step 1
@@ -87,6 +89,7 @@ export default function NewLoanPage() {
   // Step 6
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
   const [appId] = useState('LN-APPL-' + Date.now().toString().slice(-6));
 
   const emi = calcEMI(amount, rate, tenure);
@@ -144,7 +147,10 @@ export default function NewLoanPage() {
       
       console.log('Submitting loan application:', applicationData);
       
-      await loansApi.createApplication(applicationData);
+      const res = await loansApi.createApplication(applicationData);
+      if (res.success && res.application?.id) {
+        setApplicationId(res.application.id);
+      }
       setSubmitted(true);
     } catch (error: any) {
       console.error('Loan application error:', error);
@@ -360,6 +366,65 @@ export default function NewLoanPage() {
               ) : (
                 <div className="space-y-4">
                   <RiskScorePanel score={{ overall: aiScore, factors: [{ name: 'Repayment History', score: 70 }, { name: 'Income Stability', score: 55 }, { name: 'Loan Utilization', score: 60 }, { name: 'Savings Ratio', score: 65 }, { name: 'Collateral Value', score: 75 }] }} showOverrideButton={hasPermission(Permission.LOAN_APPROVE)} />
+                  
+                  {/* LN-024: CIBIL/Experian Credit Bureau Checks */}
+                  <div className="mt-4 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-blue-600" />
+                        <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">Credit Bureau Checks</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (!applicationId) {
+                            toast({ title: 'Error', description: 'Please submit application first', variant: 'destructive' });
+                            return;
+                          }
+                          try {
+                            const res = await loansApi.checkCibil(applicationId);
+                            if (res.success) {
+                              toast({ title: 'CIBIL Check Complete', description: `Score: ${res.cibilScore}` });
+                            }
+                          } catch (e: any) {
+                            toast({ title: 'Error', description: e.message || 'CIBIL check failed', variant: 'destructive' });
+                          }
+                        }}
+                        className="flex-1"
+                      >
+                        Check CIBIL
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (!applicationId) {
+                            toast({ title: 'Error', description: 'Please submit application first', variant: 'destructive' });
+                            return;
+                          }
+                          try {
+                            const res = await loansApi.checkExperian(applicationId);
+                            if (res.success) {
+                              toast({ title: 'Experian Check Complete', description: `Score: ${res.experianScore}` });
+                            }
+                          } catch (e: any) {
+                            toast({ title: 'Error', description: e.message || 'Experian check failed', variant: 'destructive' });
+                          }
+                        }}
+                        className="flex-1"
+                      >
+                        Check Experian
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Credit bureau checks help assess borrower creditworthiness. Scores range from 300-900.
+                    </p>
+                  </div>
                   <div className="p-4 rounded-lg border border-border space-y-2">
                     <p className="text-sm font-semibold">Eligibility Engine Results</p>
                     {[['Age (18–65)', true], ['Min Shares (5)', true], ['KYC Status', true], ['Membership (6m+)', true], ['Active Loans ≤2', false]].map(([rule, pass]) => (

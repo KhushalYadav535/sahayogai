@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
 import {
     ArrowLeft, Building2, Users, CreditCard, Zap, Shield, Eye,
@@ -68,6 +69,9 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
     const [saved, setSaved] = useState('');
     const [suspendOpen, setSuspendOpen] = useState(false);
     const [impersonateOpen, setImpersonateOpen] = useState(false);
+    const [planChangeOpen, setPlanChangeOpen] = useState(false);
+    const [newPlan, setNewPlan] = useState<'starter' | 'pro' | 'enterprise'>('starter');
+    const [trialStatus, setTrialStatus] = useState<{ isTrial: boolean; daysRemaining: number; isExpired: boolean } | null>(null);
     const [credits, setCredits] = useState(0);
     const [smsCredits, setSmsCredits] = useState(0);
 
@@ -78,8 +82,9 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
             platformBillingApi.getPlans(),
             platformBillingApi.getOverrides().catch(() => ({ overrides: [] })),
             tenantsApi.getModules(id),
+            tenantsApi.getTrialStatus(id).catch(() => ({ success: true, trial: { isTrial: false, daysRemaining: 0, isExpired: false, shouldTransition: false } })),
         ])
-            .then(([tr, cr, pr, or, mod]) => {
+            .then(([tr, cr, pr, or, mod, trial]) => {
                 const plans = pr.plans || DEFAULT_PLANS;
                 const ov = (or?.overrides || []).find((o: any) => o.tenantId === tr.tenant?.id);
                 const overrideMrr = ov?.mrr != null ? Number(ov.mrr) : undefined;
@@ -89,6 +94,13 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
                 setCredits(t.credits);
                 setSmsCredits(t.smsCredits);
                 setModules(mod?.modules || []);
+                if (trial.trial) {
+                    setTrialStatus({
+                        isTrial: trial.trial.isTrial,
+                        daysRemaining: trial.trial.daysRemaining,
+                        isExpired: trial.trial.isExpired,
+                    });
+                }
             })
             .catch(() => setTenant(null))
             .finally(() => setLoading(false));
@@ -285,9 +297,23 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {[
                             ['Transactions', currentUsage ? currentUsage.txnVolume.toLocaleString('en-IN') : '—', 'text-primary'],
-                            ['SMS Sent', currentUsage ? '—' : '—', 'text-blue-600'],
+                            ['Storage', currentUsage ? `${((currentUsage.storageMb || 0) / 1024).toFixed(2)} GB` : '—', 'text-blue-600'],
+                            ['AI Calls', currentUsage ? (currentUsage.aiInvocations || 0).toLocaleString('en-IN') : '—', 'text-purple-600'],
+                            ['API Calls', currentUsage ? (currentUsage.apiCalls || 0).toLocaleString('en-IN') : '—', 'text-green-600'],
+                        ].map(([k, v, color]) => (
+                            <Card key={k}>
+                                <CardContent className="pt-4">
+                                    <p className="text-xs text-muted-foreground">{k}</p>
+                                    <p className={`text-xl font-bold mt-1 ${color}`}>{v}</p>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
+                        {[
                             ['Active Members', String(tenant.members || 0), 'text-green-600'],
-                            ['Loans Disbursed', currentUsage ? currentUsage.loansDisbursed.toLocaleString('en-IN') : '—', 'text-amber-600'],
+                            ['Active Users (Peak)', currentUsage ? (currentUsage.activeUsersPeak || 0).toLocaleString('en-IN') : '—', 'text-amber-600'],
+                            ['Loans Disbursed', currentUsage ? currentUsage.loansDisbursed.toLocaleString('en-IN') : '—', 'text-indigo-600'],
                         ].map(([k, v, color]) => (
                             <Card key={k}>
                                 <CardContent className="pt-4">
@@ -350,8 +376,21 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
                             ))}
                         </CardContent>
                     </Card>
+                    {trialStatus?.isTrial && (
+                        <Alert className={trialStatus.isExpired ? 'border-red-200 bg-red-50 dark:bg-red-950' : 'border-amber-200 bg-amber-50 dark:bg-amber-950'}>
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription className="text-sm">
+                                {trialStatus.isExpired 
+                                    ? `Trial expired. Tenant should be transitioned to ACTIVE or SUSPENDED.`
+                                    : `Trial expires in ${trialStatus.daysRemaining} day(s).`}
+                            </AlertDescription>
+                        </Alert>
+                    )}
                     <div className="flex gap-2">
-                        <Button variant="outline">Change Plan</Button>
+                        <Button variant="outline" onClick={() => {
+                            setNewPlan((tenant?.plan?.toLowerCase() || 'starter') as 'starter' | 'pro' | 'enterprise');
+                            setPlanChangeOpen(true);
+                        }}>Change Plan</Button>
                         <Button variant="outline">Generate Invoice</Button>
                     </div>
                 </TabsContent>
@@ -447,6 +486,59 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
                             {saving ? 'Switching...' : 'Enter as Admin'}
                         </Button>
                         <Button variant="outline" className="flex-1" onClick={() => setImpersonateOpen(false)}>Cancel</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Plan Change Modal */}
+            <Dialog open={planChangeOpen} onOpenChange={setPlanChangeOpen}>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Change Subscription Plan — {tenant.name}</DialogTitle></DialogHeader>
+                    <p className="text-sm text-muted-foreground">Select a new plan. Modules and member caps will update automatically.</p>
+                    <div className="space-y-3 mt-4">
+                        {(['starter', 'pro', 'enterprise'] as const).map((plan) => (
+                            <button
+                                key={plan}
+                                onClick={() => setNewPlan(plan)}
+                                className={`w-full p-4 rounded-lg border text-left transition-all ${
+                                    newPlan === plan ? 'ring-2 ring-primary border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                                }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-bold capitalize">{plan}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            {plan === 'starter' && '500 members • Core modules'}
+                                            {plan === 'pro' && '2,000 members • AI Risk Scoring'}
+                                            {plan === 'enterprise' && 'Unlimited • Full AI Suite'}
+                                        </p>
+                                    </div>
+                                    {newPlan === plan && <CheckCircle className="w-5 h-5 text-primary" />}
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                        <Button
+                            className="flex-1"
+                            disabled={saving || newPlan === (tenant?.plan?.toLowerCase() || 'starter')}
+                            onClick={async () => {
+                                setSaving(true);
+                                try {
+                                    await tenantsApi.updatePlan(id, newPlan);
+                                    setTenant(prev => prev ? { ...prev, plan: newPlan.toUpperCase() } : null);
+                                    setPlanChangeOpen(false);
+                                    toast({ title: 'Plan updated', description: `Tenant plan changed to ${newPlan.toUpperCase()}` });
+                                } catch (e) {
+                                    toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
+                                } finally {
+                                    setSaving(false);
+                                }
+                            }}
+                        >
+                            {saving ? 'Updating...' : 'Change Plan'}
+                        </Button>
+                        <Button variant="outline" className="flex-1" onClick={() => setPlanChangeOpen(false)}>Cancel</Button>
                     </div>
                 </DialogContent>
             </Dialog>

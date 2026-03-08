@@ -9,6 +9,8 @@ import { MessageCircle, X, Send } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { ChatMessage } from '@/lib/types/ai';
 import { formatTimeAgo } from '@/lib/utils/format';
+import { aiApi } from '@/lib/api';
+import { getMemberToken } from '@/lib/api';
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false)
@@ -45,11 +47,44 @@ export function ChatWidget() {
     }
 
     setMessages((prev) => [...prev, userMessage])
+    const currentInput = input
     setInput('')
     setIsLoading(true)
 
-    // Simulate AI response with mock data
-    setTimeout(() => {
+    try {
+      // Try to get member ID from localStorage
+      let memberId: string | undefined;
+      try {
+        const stored = localStorage.getItem('sahayog_member');
+        if (stored) {
+          const member = JSON.parse(stored);
+          memberId = member.id;
+        }
+      } catch {}
+
+      // Use member token if available, otherwise fallback to regular token
+      const memberToken = getMemberToken();
+      const token = memberToken || (user ? undefined : undefined);
+
+      const res = await aiApi.chat({
+        query: currentInput,
+        memberId,
+      }, token);
+
+      if (res.success) {
+        const aiMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: res.response,
+          timestamp: new Date(),
+          language,
+        }
+        setMessages((prev) => [...prev, aiMessage])
+      } else {
+        throw new Error('Failed to get response')
+      }
+    } catch (err) {
+      // Fallback to mock response if API fails
       const aiResponses: Record<string, string> = {
         EN: 'Thank you for your question. I\'m analyzing your cooperative data to provide the best answer. Would you like me to help with loan details, savings information, or compliance queries?',
         HI: 'आपके प्रश्न के लिए धन्यवाद। मैं आपके सहकारी डेटा का विश्लेषण कर रहा हूं। क्या आप ऋण, बचत या अनुपालन की जानकारी चाहते हैं?',
@@ -63,10 +98,10 @@ export function ChatWidget() {
         timestamp: new Date(),
         language,
       }
-
       setMessages((prev) => [...prev, aiMessage])
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   return (

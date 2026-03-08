@@ -50,10 +50,15 @@ export default function TrialBalancePage() {
 
   const fetchReport = useCallback(() => {
     setLoading(true)
-    glApi.trialBalance({ fromDate, toDate })
-      .then(r => setTrialBalance(r.rows?.length ? mapGlRows(r.rows) : []))
+    const period = fromDate.substring(0, 7) // YYYY-MM
+    glApi.trialBalance({ fromDate, toDate, period })
+      .then(r => {
+        setTrialBalance(r.rows?.length ? mapGlRows(r.rows) : [])
+        setIsFrozen(r.isFrozen || false)
+      })
       .catch(() => {
         setTrialBalance([])
+        setIsFrozen(false)
         toast({ title: 'Error', description: 'Failed to load trial balance', variant: 'destructive' })
       })
       .finally(() => setLoading(false))
@@ -192,22 +197,16 @@ export default function TrialBalancePage() {
         </div>
       </Card>
 
-      {/* Freeze Period */}
-      {isBalanced && (
-        <Card className="p-6 bg-blue-50 border-l-4 border-l-blue-500">
-          <h3 className="font-semibold mb-3 flex items-center gap-2">
+      {/* Freeze Period Status */}
+      {isFrozen && (
+        <Card className="p-6 bg-amber-50 border-l-4 border-l-amber-500">
+          <h3 className="font-semibold mb-2 flex items-center gap-2 text-amber-800">
             <Lock className="w-5 h-5" />
-            Freeze Period
+            Period is Frozen
           </h3>
-          <p className="text-sm text-foreground/80 mb-4">
-            Once you freeze this period, no more journal entries can be posted to this period. This action is final.
+          <p className="text-sm text-amber-700">
+            This period has been closed. No new journal entries can be posted. Only audit adjustment entries are allowed.
           </p>
-          <Button
-            onClick={() => setIsFrozen(!isFrozen)}
-            className={isFrozen ? 'bg-amber-600 hover:bg-amber-700' : ''}
-          >
-            {isFrozen ? 'Period is Frozen' : 'Freeze Period'}
-          </Button>
         </Card>
       )}
     </div>

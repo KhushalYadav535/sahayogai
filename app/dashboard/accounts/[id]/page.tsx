@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Permission } from '@/lib/types/auth';
@@ -157,7 +157,11 @@ function WithdrawModal({ open, onClose, balance, onSuccess, accountId, accountNo
   );
 }
 
-export default function AccountDetailPage({ params }: { params: { id: string } }) {
+interface AccountDetailPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function AccountDetailPage({ params }: AccountDetailPageProps) {
   const router = useRouter();
   const { hasPermission } = useAuth();
   
@@ -168,15 +172,34 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
   const [depositOpen, setDepositOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
+  // Resolve async params using use() hook (Next.js 15+)
+  const { id: accountId } = use(params);
+
   const fetchAccount = async () => {
+    // Validate account ID before making API call
+    // Also check for reserved route names that shouldn't be treated as account IDs
+    const reservedRoutes = ['deposit', 'withdraw', 'transfer', 'new', 'dividend', 'open'];
+    if (!accountId || accountId === 'undefined' || accountId === 'null' || reservedRoutes.includes(accountId.toLowerCase())) {
+      console.error("Invalid account ID:", accountId);
+      setLoading(false);
+      // Redirect to accounts list if it's a reserved route
+      if (reservedRoutes.includes(accountId.toLowerCase())) {
+        router.push('/dashboard/accounts');
+      }
+      return;
+    }
+    
     try {
-      const res = await sbApi.get(params.id);
+      console.log("Fetching account with ID:", accountId);
+      const res = await sbApi.get(accountId);
       if (res.success && res.account) {
         setAccount(res.account);
         setTransactions(res.account.transactions || []);
+      } else {
+        console.error("Account not found:", res);
       }
     } catch (e) {
-      console.error(e);
+      console.error("Error fetching account:", e);
     } finally {
       setLoading(false);
     }
@@ -184,7 +207,7 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
 
   useEffect(() => {
     fetchAccount();
-  }, [params.id]);
+  }, [accountId]);
 
   if (loading) {
     return (
@@ -196,8 +219,18 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
 
   if (!account) {
     return (
-        <div className="flex items-center justify-center min-h-[400px]">
-            <p className="text-muted-foreground">Account not found.</p>
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+            <Alert variant="destructive" className="max-w-md">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                {accountId === 'undefined' || accountId === 'null' || !accountId
+                  ? `Invalid account ID: ${accountId}. Please go back and try again.`
+                  : `Account not found for ID: ${accountId}`}
+              </AlertDescription>
+            </Alert>
+            <Button variant="outline" onClick={() => router.back()}>
+              Go Back
+            </Button>
         </div>
     );
   }
@@ -286,8 +319,33 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
               <CardTitle className="flex items-center justify-between">
                 <span>Transactions</span>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm">Export PDF</Button>
-                  <Button variant="outline" size="sm">Export Excel</Button>
+                  <Button variant="outline" size="sm" onClick={async () => {
+                    try {
+                      const html = await sbApi.getPassbook(params.id, { format: 'pdf', language: 'en' });
+                      const blob = new Blob([html], { type: 'text/html' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `Passbook_${account.accountNumber}.html`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch (e) {
+                      alert('Failed to export PDF');
+                    }
+                  }}>Export PDF</Button>
+                  <Button variant="outline" size="sm" onClick={async () => {
+                    try {
+                      const blob = await sbApi.getPassbook(params.id, { format: 'excel', language: 'en' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `Passbook_${account.accountNumber}.csv`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch (e) {
+                      alert('Failed to export Excel');
+                    }
+                  }}>Export Excel</Button>
                 </div>
               </CardTitle>
             </CardHeader>

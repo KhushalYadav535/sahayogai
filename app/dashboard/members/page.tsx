@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Search, FileText, Eye } from 'lucide-react';
+import { Plus, Search, FileText, Eye, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -99,12 +99,22 @@ export default function MembersPage() {
             Manage member registration, KYC, and status lifecycle
           </p>
         </div>
-        {canCreate && (
-          <Button className="gap-2" onClick={() => router.push('/dashboard/members/register')}>
-            <Plus className="w-4 h-4" />
-            Register New Member
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {canCreate && (
+            <>
+              <Button className="gap-2" onClick={() => router.push('/dashboard/members/register')}>
+                <Plus className="w-4 h-4" />
+                Register New Member
+              </Button>
+              <Link href="/dashboard/members/bulk-import">
+                <Button variant="outline" className="gap-2">
+                  <Upload className="w-4 h-4" />
+                  Bulk Import
+                </Button>
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Search and filters */}

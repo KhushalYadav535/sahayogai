@@ -18,6 +18,7 @@ import {
   Bot,
   Zap,
   CheckSquare,
+  Bell,
   BarChart3,
   ChevronDown,
   ChevronRight,
@@ -35,6 +36,9 @@ import {
   Building2,
   Send,
   Map,
+  Hash,
+  Clock,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter, usePathname } from 'next/navigation';
@@ -122,6 +126,7 @@ const navigationItems: NavItem[] = [
       { label: 'Day-End Process', href: '/dashboard/accounting/day-end', icon: <CheckSquare className="w-4 h-4" /> },
       { label: 'Month-End Close', href: '/dashboard/accounting/month-end', icon: <CheckSquare className="w-4 h-4" /> },
       { label: 'Reversal Entries', href: '/dashboard/accounting/reversal', icon: <TrendingUp className="w-4 h-4" /> },
+      { label: 'Audit Adjustments', href: '/dashboard/accounting/audit-adjustments', icon: <Shield className="w-4 h-4" /> },
       { label: 'Suspense Accounts', href: '/dashboard/accounting/suspense', icon: <AlertTriangle className="w-4 h-4" /> },
       { label: 'Bank Reconciliation', href: '/dashboard/accounting/bank-reconciliation', icon: <RefreshCw className="w-4 h-4" /> },
     ],
@@ -135,11 +140,12 @@ const navigationItems: NavItem[] = [
   },
   {
     label: 'Compliance',
-    href: '/dashboard/compliance/reports',
+    href: '/dashboard/compliance/dashboard',
     icon: <Shield className="w-5 h-5" />,
     requiredPermissions: [Permission.COMPLIANCE_VIEW],
     tenantOnly: true,
     children: [
+      { label: 'Dashboard', href: '/dashboard/compliance/dashboard', icon: <BarChart3 className="w-4 h-4" /> },
       { label: 'Reports Hub', href: '/dashboard/compliance/reports', icon: <FileText className="w-4 h-4" /> },
       { label: 'NABARD Report', href: '/dashboard/compliance/nabard-report', icon: <Building2 className="w-4 h-4" /> },
       { label: 'Registrar Return', href: '/dashboard/compliance/registrar-return', icon: <Send className="w-4 h-4" /> },
@@ -152,13 +158,15 @@ const navigationItems: NavItem[] = [
     label: 'Reports & BI',
     href: '/dashboard/reports/custom',
     icon: <BarChart3 className="w-5 h-5" />,
-    requiredRoles: [UserRole.PRESIDENT, UserRole.ACCOUNTANT, UserRole.SOCIETY_ADMIN],
+    requiredRoles: [UserRole.PRESIDENT, UserRole.ACCOUNTANT, UserRole.SOCIETY_ADMIN, UserRole.SECRETARY],
     tenantOnly: true,
     children: [
+      { label: 'Director KPI Dashboard', href: '/dashboard/reports/director-kpi', icon: <BarChart3 className="w-4 h-4" />, requiredRoles: [UserRole.PRESIDENT] },
       { label: 'Custom Report Builder', href: '/dashboard/reports/custom', icon: <BarChart3 className="w-4 h-4" /> },
       { label: 'Predictive Risk', href: '/dashboard/reports/risk', icon: <Shield className="w-4 h-4" /> },
       { label: 'NPA Trend', href: '/dashboard/reports/npa-trend', icon: <TrendingDown className="w-4 h-4" /> },
       { label: 'Loan Portfolio Map', href: '/dashboard/reports/loan-heatmap', icon: <Map className="w-4 h-4" /> },
+      { label: 'Member Analytics', href: '/dashboard/reports/member-analytics', icon: <Users className="w-4 h-4" />, requiredRoles: [UserRole.PRESIDENT, UserRole.SECRETARY] },
     ],
   },
   {
@@ -170,11 +178,15 @@ const navigationItems: NavItem[] = [
     tenantOnly: true,
   },
   {
-    label: 'AI Alerts',
+    label: 'AI',
     href: '/dashboard/ai/alerts',
-    icon: <Zap className="w-5 h-5" />,
-    requiredPermissions: [Permission.MEMBER_VIEW],
+    icon: <Bot className="w-5 h-5" />,
     tenantOnly: true,
+    children: [
+      { label: 'AI Alerts', href: '/dashboard/ai/alerts', icon: <Zap className="w-4 h-4" /> },
+      { label: 'Sahayog Saathi', href: '/dashboard/ai/chat', icon: <Bot className="w-4 h-4" /> },
+      { label: 'Compliance Alerts', href: '/dashboard/ai/compliance-alerts', icon: <Bell className="w-4 h-4" /> },
+    ],
   },
   {
     label: 'Cash Flow',
@@ -189,6 +201,36 @@ const navigationItems: NavItem[] = [
     icon: <Bot className="w-5 h-5" />,
     requiredRoles: [UserRole.PLATFORM_ADMIN],
     platformOnly: true,
+  },
+  {
+    label: 'Risk & Controls',
+    href: '/dashboard/risk-controls',
+    icon: <Shield className="w-5 h-5" />,
+    requiredRoles: [UserRole.SOCIETY_ADMIN, UserRole.PLATFORM_ADMIN],
+    tenantOnly: true,
+    children: [
+      { label: 'Overview', href: '/dashboard/risk-controls', icon: <Shield className="w-4 h-4" /> },
+      { label: 'Sessions', href: '/dashboard/risk-controls/sessions', icon: <Users className="w-4 h-4" /> },
+      { label: 'Daily Limits', href: '/dashboard/risk-controls/daily-limits', icon: <CreditCard className="w-4 h-4" /> },
+      { label: 'Password', href: '/dashboard/risk-controls/password', icon: <Lock className="w-4 h-4" /> },
+      { label: 'AML Alerts', href: '/dashboard/risk-controls/aml-alerts', icon: <AlertTriangle className="w-4 h-4" /> },
+      { label: 'Backup Verification', href: '/dashboard/risk-controls/backup-verification', icon: <Database className="w-4 h-4" /> },
+      { label: 'Hash Chain', href: '/dashboard/risk-controls/hash-chain', icon: <Hash className="w-4 h-4" /> },
+      { label: 'Data Retention', href: '/dashboard/risk-controls/data-retention', icon: <Clock className="w-4 h-4" /> },
+    ],
+  },
+  {
+    label: 'Security & RBAC',
+    href: '/dashboard/security',
+    icon: <Shield className="w-5 h-5" />,
+    requiredRoles: [UserRole.SOCIETY_ADMIN, UserRole.PLATFORM_ADMIN],
+    tenantOnly: true,
+    children: [
+      { label: 'MFA Setup', href: '/dashboard/security/mfa', icon: <Lock className="w-4 h-4" /> },
+      { label: 'Permissions', href: '/dashboard/security/permissions', icon: <CheckSquare className="w-4 h-4" /> },
+      { label: 'Role Assignments', href: '/dashboard/security/roles', icon: <Users className="w-4 h-4" /> },
+      { label: 'DPDP Requests', href: '/dashboard/security/dpdp', icon: <FileText className="w-4 h-4" /> },
+    ],
   },
   {
     label: 'Settings',

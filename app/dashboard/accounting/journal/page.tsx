@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Trash2, Plus } from 'lucide-react'
+import { Trash2, Plus, Loader2 } from 'lucide-react'
 import { JournalEntry, JournalLine } from '@/lib/types/accounting'
 import { StatusBadge } from '@/components/common/status-badge'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
@@ -57,6 +57,8 @@ export default function JournalEntryPage() {
     { accountCode: '', accountName: '', debit: 0, credit: 0 },
     { accountCode: '', accountName: '', debit: 0, credit: 0 },
   ])
+  const [suggestedClassification, setSuggestedClassification] = useState<{ glCode: string; glName: string; confidence: number } | null>(null)
+  const [classificationLoading, setClassificationLoading] = useState(false)
 
   const totalDebit = lines.reduce((sum, l) => sum + l.debit, 0)
   const totalCredit = lines.reduce((sum, l) => sum + l.credit, 0)
@@ -174,11 +176,47 @@ export default function JournalEntryPage() {
             </div>
             <div>
               <label className="text-sm font-medium mb-2 block">Narration</label>
-              <Input
-                placeholder="Description of this transaction..."
-                value={narration}
-                onChange={(e) => setNarration(e.target.value)}
-              />
+              <div className="relative">
+                <Input
+                  placeholder="Description of this transaction..."
+                  value={narration}
+                  onChange={(e) => setNarration(e.target.value)}
+                />
+                {classificationLoading && (
+                  <div className="absolute right-2 top-2.5">
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              {/* AI-005: Auto-Ledger Classification Suggestion */}
+              {suggestedClassification && (
+                <div className="mt-2 p-2 bg-primary/10 border border-primary/20 rounded text-xs">
+                  <div className="flex items-center justify-between">
+                    <span>
+                      <strong>AI Suggestion:</strong> {suggestedClassification.glCode} - {suggestedClassification.glName}
+                      <span className="text-muted-foreground ml-2">
+                        ({Math.round(suggestedClassification.confidence * 100)}% confidence)
+                      </span>
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 text-xs"
+                      onClick={() => {
+                        const emptyLineIdx = lines.findIndex(l => !l.accountCode)
+                        if (emptyLineIdx >= 0) {
+                          const newLines = [...lines]
+                          newLines[emptyLineIdx].accountCode = suggestedClassification.glCode
+                          newLines[emptyLineIdx].accountName = suggestedClassification.glName
+                          setLines(newLines)
+                        }
+                      }}
+                    >
+                      Use
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

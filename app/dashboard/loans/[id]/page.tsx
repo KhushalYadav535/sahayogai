@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RiskScorePanel } from '@/components/ai/risk-score-panel';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
-import { ArrowLeft, AlertTriangle, TrendingUp, Shield, Users, Zap, Clock } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, TrendingUp, Shield, Users, Zap, Clock, RefreshCw, FileText, UserPlus } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { loansApi } from '@/lib/api';
 
@@ -177,7 +177,41 @@ export default function LoanDetailPage({ params }: { params: { id: string } }) {
             </Card>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={() => setPreCloseOpen(true)}>Calculate Pre-closure</Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => setPreCloseOpen(true)}>Calculate Pre-closure</Button>
+              {loan.status === 'ACTIVE' && (loan.restructureCount || 0) < 3 && (
+                <Button variant="outline" onClick={() => router.push(`/dashboard/loans/${params.id}/restructure`)}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Restructure
+                </Button>
+              )}
+              {loan.status === 'ACTIVE' && (
+                <Button variant="outline" onClick={() => router.push(`/dashboard/loans/${params.id}/refinance`)}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Refinance
+                </Button>
+              )}
+              {loan.status === 'ACTIVE' && (
+                <Button variant="outline" onClick={() => {
+                  const guarantorName = prompt('Enter guarantor name (or member ID if existing member):');
+                  const guarantorIncome = prompt('Enter guarantor income/networth (₹):');
+                  const guaranteeAmount = prompt('Enter guarantee amount (₹):');
+                  if (guarantorName && guarantorIncome && guaranteeAmount) {
+                    loansApi.addGuarantor(params.id, {
+                      guarantorName,
+                      guarantorIncome: parseFloat(guarantorIncome),
+                      guaranteeAmount: parseFloat(guaranteeAmount),
+                    }).then(() => {
+                      alert('Guarantor added successfully');
+                      window.location.reload();
+                    }).catch(e => alert('Failed: ' + e.message));
+                  }
+                }}>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Add Guarantor
+                </Button>
+              )}
+            </div>
             {hasPermission(Permission.LOAN_APPROVE) && <Button variant="outline">Restructure Loan</Button>}
           </div>
         </TabsContent>
@@ -244,9 +278,53 @@ export default function LoanDetailPage({ params }: { params: { id: string } }) {
         {/* Guarantors */}
         <TabsContent value="guarantors">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Users className="w-4 h-4" /> Guarantors</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Users className="w-4 h-4" /> Guarantors</CardTitle>
+            </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground py-4">No guarantors registered for this loan.</p>
+              {(loan as any).guarantorMemberId || (loan as any).guarantorName ? (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg border border-border">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-semibold">{(loan as any).guarantorName || `Member ID: ${(loan as any).guarantorMemberId}`}</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Guarantee Amount: ₹{((loan as any).guaranteeAmount || 0).toLocaleString()}
+                        </p>
+                        {(loan as any).guarantorIncome && (
+                          <p className="text-xs text-muted-foreground">
+                            Income/Networth: ₹{((loan as any).guarantorIncome || 0).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground py-4">No guarantors registered for this loan.</p>
+                  {loan.status === 'ACTIVE' && (
+                    <Button variant="outline" onClick={() => {
+                      const guarantorName = prompt('Enter guarantor name (or member ID if existing member):');
+                      const guarantorIncome = prompt('Enter guarantor income/networth (₹):');
+                      const guaranteeAmount = prompt('Enter guarantee amount (₹):');
+                      if (guarantorName && guarantorIncome && guaranteeAmount) {
+                        loansApi.addGuarantor(params.id, {
+                          guarantorName,
+                          guarantorIncome: parseFloat(guarantorIncome),
+                          guaranteeAmount: parseFloat(guaranteeAmount),
+                        }).then(() => {
+                          alert('Guarantor added successfully');
+                          window.location.reload();
+                        }).catch(e => alert('Failed: ' + e.message));
+                      }
+                    }}>
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Add Guarantor
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

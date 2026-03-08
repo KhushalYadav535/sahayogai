@@ -7,6 +7,7 @@ import { membersApi, sbApi, loansApi } from '@/lib/api';
 import { Permission, UserRole } from '@/lib/types/auth';
 import { Member, MemberStatus, MemberCategory, KYCStatus } from '@/lib/types/member';
 import { RiskScorePanel } from '@/components/ai/risk-score-panel';
+import { MaskedField, maskAadhaar, maskPAN, maskMobile } from '@/components/risk-controls/masked-field';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,7 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, Calendar, MapPin, FileText, User, Edit, Pause, LogOut, Heart, Download, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { AlertTriangle, Calendar, MapPin, FileText, User, Edit, Pause, LogOut, Heart, Download, Clock, CheckCircle, AlertCircle, Ban, RefreshCw, Share2, Users, FileCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 
@@ -109,13 +110,15 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
   const { toast } = useToast();
   const { user, hasPermission } = useAuth();
   const [member, setMember] = useState<Member | null>(null);
-  const [accounts, setAccounts] = useState<{ accountNo: string; type: string; balance: number; status: string; openedDate: Date }[]>([]);
+  const [accounts, setAccounts] = useState<{ id?: string; accountNo: string; type: string; balance: number; status: string; openedDate: Date }[]>([]);
   const [loans, setLoans] = useState<{ loanId: string; type: string; amount: number; outstanding: number; status: string; nextEmiDate?: Date }[]>([]);
   const [documents, setDocuments] = useState<{ type: string; uploadDate: Date; status: string; verifiedBy: string; verifiedOn: Date }[]>([]);
   const [auditTrail, setAuditTrail] = useState<{ event: string; user: string; role: string; timestamp: Date; ip: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [kycReinitiating, setKycReinitiating] = useState(false);
+  const [ledger, setLedger] = useState<any[]>([]);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -124,14 +127,68 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
       sbApi.list({ memberId: id }),
       loansApi.list({ memberId: id }),
     ]).then(([memRes, sbRes, loanRes]) => {
+      // Handle potential API errors
+      if (!sbRes || !sbRes.success) {
+        console.error("SB API error:", sbRes);
+        setAccounts([]);
+      }
       if (memRes.member) setMember(mapApiMember(memRes.member));
-      setAccounts((sbRes.accounts || []).map((a: any) => ({
-        accountNo: a.accountNumber,
-        type: a.accountType || 'Savings',
-        balance: Number(a.balance) || 0,
-        status: (a.status || 'active').toUpperCase(),
-        openedDate: a.openedAt ? new Date(a.openedAt) : new Date(),
-      })));
+      
+      // Debug: Log the API response
+      if (sbRes && sbRes.accounts) {
+        console.log("SB Accounts API Response:", sbRes.accounts);
+      }
+      
+      // Handle SB accounts response - check multiple possible response structures
+      let accountsArray: any[] = [];
+      if (sbRes) {
+        if (sbRes.success && Array.isArray(sbRes.accounts)) {
+          accountsArray = sbRes.accounts;
+        } else if (Array.isArray(sbRes)) {
+          accountsArray = sbRes;
+        } else if (sbRes.data && Array.isArray(sbRes.data)) {
+          accountsArray = sbRes.data;
+        } else if (sbRes.data && Array.isArray(sbRes.data.accounts)) {
+          accountsArray = sbRes.data.accounts;
+        } else if (Array.isArray(sbRes.accounts)) {
+          accountsArray = sbRes.accounts;
+        }
+      }
+      
+      console.log("SB Accounts API Response:", sbRes);
+      console.log("Extracted accounts array:", accountsArray);
+      
+      // Ensure id field is properly extracted from API response
+      // Backend now supports lookup by both id (UUID) and accountNumber
+      const mappedAccounts = accountsArray.map((a: any) => {
+        // Use database id if available, otherwise fallback to accountNumber (backend supports both)
+        const accountId = a.id || a.accountId || a.accountNumber;
+        if (!accountId) {
+          console.error("Account missing id, accountId, and accountNumber:", a);
+        }
+        // Only include accounts with valid IDs
+        if (!accountId) {
+          console.error("Skipping account without ID:", a);
+          return null;
+        }
+        
+        const mapped = {
+          id: accountId, // Account ID for API calls - can be UUID or accountNumber
+          accountNo: a.accountNumber || a.accountNo || 'N/A',
+          type: a.accountType || 'Savings',
+          balance: Number(a.balance) || 0,
+          status: (a.status || 'active').toUpperCase(),
+          openedDate: a.openedAt ? new Date(a.openedAt) : new Date(),
+        };
+        console.log("Mapped account:", mapped);
+        return mapped;
+      });
+      
+      // Filter out null values (accounts without IDs)
+      const validAccounts = mappedAccounts.filter((a): a is NonNullable<typeof a> => a !== null);
+      console.log("Setting accounts:", validAccounts);
+      setAccounts(validAccounts);
+      
       setLoans((loanRes.loans || []).map((l: any) => ({
         loanId: l.loanNumber || l.id,
         type: l.loanType || 'Short Term',
@@ -142,7 +199,17 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
       })));
       setDocuments([]);
       setAuditTrail([]);
-    }).catch(() => setMember(null)).finally(() => setLoading(false));
+    }).catch((err) => {
+      console.error("Error loading member data:", err);
+      setMember(null);
+      setAccounts([]);
+      setLoans([]);
+      toast({
+        title: "Error",
+        description: "Failed to load member data",
+        variant: "destructive",
+      });
+    }).finally(() => setLoading(false));
   }, [id]);
 
   if (!id || loading || !member) {
@@ -183,6 +250,24 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
               <Edit className="w-4 h-4 mr-2" />
               Edit
             </Button>
+            <Button variant="outline" size="sm" onClick={async () => {
+              try {
+                const html = await membersApi.getCertificate(id);
+                const blob = new Blob([html], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Membership_Certificate_${member.memberId}.html`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast({ title: 'Certificate Downloaded', description: 'Membership certificate downloaded successfully.' });
+              } catch (e) {
+                toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
+              }
+            }}>
+              <FileCheck className="w-4 h-4 mr-2" />
+              Certificate
+            </Button>
             {member.status === MemberStatus.ACTIVE && (
               <>
                 <AlertDialog>
@@ -197,7 +282,41 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                     <AlertDialogDescription>
                       Are you sure you want to suspend {member.firstName}? They will lose access to their accounts.
                     </AlertDialogDescription>
-                    <AlertDialogAction>Confirm</AlertDialogAction>
+                    <AlertDialogAction onClick={async () => {
+                      try {
+                        await membersApi.suspend(id, { reasonCode: 'MANUAL_SUSPENSION', remarks: 'Suspended by admin' });
+                        toast({ title: 'Member Suspended', description: `${member.firstName} has been suspended.` });
+                        const res = await membersApi.get(id);
+                        if (res.member) setMember(mapApiMember(res.member));
+                      } catch (e) {
+                        toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
+                      }
+                    }}>Confirm</AlertDialogAction>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Ban className="w-4 h-4 mr-2" />
+                      Blacklist
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogTitle>Blacklist Member</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to blacklist {member.firstName}? This action is irreversible.
+                    </AlertDialogDescription>
+                    <AlertDialogAction onClick={async () => {
+                      try {
+                        await membersApi.blacklist(id, { reasonCode: 'MANUAL_BLACKLIST', remarks: 'Blacklisted by admin' });
+                        toast({ title: 'Member Blacklisted', description: `${member.firstName} has been blacklisted.` });
+                        const res = await membersApi.get(id);
+                        if (res.member) setMember(mapApiMember(res.member));
+                      } catch (e) {
+                        toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
+                      }
+                    }}>Confirm</AlertDialogAction>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -215,6 +334,21 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                 </Link>
               </>
             )}
+            {member.status === MemberStatus.SUSPENDED && (
+              <Button variant="outline" size="sm" onClick={async () => {
+                try {
+                  await membersApi.reactivate(id);
+                  toast({ title: 'Member Reactivated', description: `${member.firstName} has been reactivated.` });
+                  const res = await membersApi.get(id);
+                  if (res.member) setMember(mapApiMember(res.member));
+                } catch (e) {
+                  toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
+                }
+              }}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Reactivate
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -231,12 +365,13 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="kyc">KYC Documents</TabsTrigger>
           <TabsTrigger value="accounts">Accounts</TabsTrigger>
           <TabsTrigger value="loans">Loans</TabsTrigger>
           <TabsTrigger value="deposits">Deposits</TabsTrigger>
+          <TabsTrigger value="ledger">Ledger</TabsTrigger>
           <TabsTrigger value="risk">AI Risk</TabsTrigger>
           <TabsTrigger value="audit">Audit Trail</TabsTrigger>
         </TabsList>
@@ -279,7 +414,14 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Mobile</p>
-                  <p className="font-semibold">{member.mobileNumber}</p>
+                  <MaskedField
+                    value={member.mobileNumber}
+                    field="mobile"
+                    entityType="Member"
+                    entityId={member.id}
+                    maskedDisplay={maskMobile(member.mobileNumber)}
+                    className="font-semibold"
+                  />
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Email</p>
@@ -296,11 +438,25 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Aadhaar</p>
-                  <p className="font-semibold font-mono">XXXX-XXXX-{member.aadhaar?.slice(-4)}</p>
+                  <MaskedField
+                    value={member.aadhaar}
+                    field="aadhaar"
+                    entityType="Member"
+                    entityId={member.id}
+                    maskedDisplay={maskAadhaar(member.aadhaar)}
+                    className="font-semibold"
+                  />
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">PAN</p>
-                  <p className="font-semibold font-mono">XXXXX{member.pan?.slice(-5)}</p>
+                  <MaskedField
+                    value={member.pan}
+                    field="pan"
+                    entityType="Member"
+                    entityId={member.id}
+                    maskedDisplay={maskPAN(member.pan)}
+                    className="font-semibold"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -319,6 +475,28 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                   <p className="text-xs font-medium text-muted-foreground">Shares Held</p>
                   <p className="font-semibold">{member.sharesHeld} @ ₹100/share = ₹{member.totalShareAmount}</p>
                 </div>
+                {hasPermission(Permission.MEMBER_EDIT) && (
+                  <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => {
+                    const targetId = prompt('Enter target member ID for share transfer:');
+                    const shares = prompt('Enter number of shares to transfer:');
+                    const resolutionRef = prompt('Enter BOD resolution reference:');
+                    if (targetId && shares && resolutionRef) {
+                      membersApi.transferShares(id, {
+                        targetMemberId: targetId,
+                        shares: parseInt(shares),
+                        faceValue: 100,
+                        resolutionRef,
+                      }).then(() => {
+                        toast({ title: 'Share Transfer Initiated', description: 'Transfer recorded (pending BOD approval).' });
+                      }).catch((e) => {
+                        toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
+                      });
+                    }
+                  }}>
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Transfer Shares
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
@@ -341,6 +519,27 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                 )}
               </CardContent>
             </Card>
+
+            {/* Joint Membership */}
+            {member.jointHolders && member.jointHolders.length > 0 && (
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Joint Membership
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {member.jointHolders.map((joint, idx) => (
+                    <div key={idx} className="pb-4 border-b last:border-0">
+                      <p className="text-xs font-medium text-muted-foreground">Joint Holder {idx + 1}</p>
+                      <p className="font-semibold">{joint.name}</p>
+                      <p className="text-sm text-muted-foreground">Mode: EITHER_OR_SURVIVOR</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Nominee */}
             {member.nominees && member.nominees.length > 0 && (
@@ -373,27 +572,50 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                   {member.kycStatus}
                 </Badge>
               </div>
-              <Button
-                variant="outline"
-                disabled={kycReinitiating}
-                onClick={async () => {
-                  if (!id) return;
-                  setKycReinitiating(true);
-                  try {
-                    await membersApi.kyc.reinitiate(id);
-                    toast({ title: 'eKYC Re-initiated', description: 'Member KYC status reset to pending. Member must complete verification.' });
-                    const res = await membersApi.get(id);
-                    if (res.member) setMember(mapApiMember(res.member));
-                  } catch (e) {
-                    toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
-                  } finally {
-                    setKycReinitiating(false);
-                  }
-                }}
-              >
-                <AlertTriangle className="w-4 h-4 mr-2" />
-                {kycReinitiating ? 'Re-initiating...' : 'Re-initiate eKYC'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  disabled={kycReinitiating}
+                  onClick={async () => {
+                    if (!id) return;
+                    setKycReinitiating(true);
+                    try {
+                      await membersApi.kyc.reinitiate(id);
+                      toast({ title: 'eKYC Re-initiated', description: 'Member KYC status reset to pending. Member must complete verification.' });
+                      const res = await membersApi.get(id);
+                      if (res.member) setMember(mapApiMember(res.member));
+                    } catch (e) {
+                      toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
+                    } finally {
+                      setKycReinitiating(false);
+                    }
+                  }}
+                >
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  {kycReinitiating ? 'Re-initiating...' : 'Re-initiate eKYC'}
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={kycReinitiating}
+                  onClick={async () => {
+                    if (!id) return;
+                    setKycReinitiating(true);
+                    try {
+                      await membersApi.revalidateKyc(id);
+                      toast({ title: 'KYC Re-validation Initiated', description: 'KYC re-validation workflow started. Member must complete verification.' });
+                      const res = await membersApi.get(id);
+                      if (res.member) setMember(mapApiMember(res.member));
+                    } catch (e) {
+                      toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
+                    } finally {
+                      setKycReinitiating(false);
+                    }
+                  }}
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Re-validate KYC
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -460,24 +682,72 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {accounts.map((account) => (
-                    <TableRow key={account.accountNo}>
-                      <TableCell className="font-semibold">{account.accountNo}</TableCell>
-                      <TableCell>{account.type}</TableCell>
-                      <TableCell className="text-right font-semibold">₹{account.balance.toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-green-50 text-green-800">
-                          {account.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{new Date(account.openedDate).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <Link href={`/dashboard/accounts/${account.accountNo}`}>
-                          <Button variant="ghost" size="sm">View</Button>
-                        </Link>
+                  {accounts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        No savings accounts found
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    accounts.map((account, index) => {
+                      // Debug: Log each account before rendering
+                      console.log(`Account ${index}:`, account);
+                      
+                      const accountId = account.id || account.accountNo;
+                      
+                      if (!accountId || accountId === 'undefined' || accountId === 'N/A') {
+                        console.error(`Account ${index} has invalid ID:`, account);
+                        return (
+                          <TableRow key={`${account.accountNo}-${index}`}>
+                            <TableCell className="font-semibold">{account.accountNo}</TableCell>
+                            <TableCell>{account.type}</TableCell>
+                            <TableCell className="text-right font-semibold">₹{account.balance.toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="bg-green-50 text-green-800">
+                                {account.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{new Date(account.openedDate).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                disabled
+                                onClick={() => {
+                                  toast({
+                                    title: "Error",
+                                    description: `Account ID not available for ${account.accountNo}`,
+                                    variant: "destructive",
+                                  });
+                                }}
+                              >
+                                View (Error)
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
+                      
+                      return (
+                        <TableRow key={accountId}>
+                          <TableCell className="font-semibold">{account.accountNo}</TableCell>
+                          <TableCell>{account.type}</TableCell>
+                          <TableCell className="text-right font-semibold">₹{account.balance.toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-green-50 text-green-800">
+                              {account.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{new Date(account.openedDate).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <Link href={`/dashboard/accounts/${encodeURIComponent(accountId)}`}>
+                              <Button variant="ghost" size="sm">View</Button>
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -537,6 +807,91 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">No deposits found.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Ledger Tab */}
+        <TabsContent value="ledger">
+          <Card>
+            <CardHeader>
+              <CardTitle>Member Ledger</CardTitle>
+              <CardDescription>Complete transaction history across all accounts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4 flex gap-2">
+                <Button variant="outline" size="sm" onClick={async () => {
+                  setLedgerLoading(true);
+                  try {
+                    const res = await membersApi.getLedger(id);
+                    setLedger(res.ledger || []);
+                  } catch (e) {
+                    toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
+                  } finally {
+                    setLedgerLoading(false);
+                  }
+                }}>
+                  {ledgerLoading ? 'Loading...' : 'Load Ledger'}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  const csv = [
+                    ['Date', 'Type', 'Transaction Type', 'Description', 'Debit', 'Credit', 'Balance'].join(','),
+                    ...ledger.map(e => [
+                      new Date(e.date).toLocaleDateString(),
+                      e.type,
+                      e.transactionType || '',
+                      `"${(e.description || '').replace(/"/g, '""')}"`,
+                      e.debit || 0,
+                      e.credit || 0,
+                      e.balance || '',
+                    ].join(',')),
+                  ].join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `Member_Ledger_${member.memberId}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </Button>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Debit</TableHead>
+                    <TableHead className="text-right">Credit</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ledger.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                        {ledgerLoading ? 'Loading...' : 'Click "Load Ledger" to view transactions'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    ledger.map((entry, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{entry.type}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-md truncate">{entry.description}</TableCell>
+                        <TableCell className="text-right">{entry.debit ? `₹${entry.debit.toLocaleString()}` : '-'}</TableCell>
+                        <TableCell className="text-right">{entry.credit ? `₹${entry.credit.toLocaleString()}` : '-'}</TableCell>
+                        <TableCell className="text-right">{entry.balance ? `₹${entry.balance.toLocaleString()}` : '-'}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>

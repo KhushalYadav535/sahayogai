@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
-import { ArrowUpRight, ArrowDownLeft, BookOpen, Search, Loader2 } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, BookOpen, Search, Loader2, FileText, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function PortalAccountPage() {
@@ -62,33 +62,106 @@ export default function PortalAccountPage() {
         return () => { isMounted = false; };
     }, [toast]);
 
-    const handleDownloadPassbook = () => {
+    const handleDownloadPassbook = (format: 'csv' | 'pdf' = 'csv') => {
         if (!transactions.length) {
             toast({ title: "No data", description: "No transactions to download.", variant: "destructive" });
             return;
         }
 
-        const headers = ["Date", "Narration", "Type", "Amount"];
-        const rows = transactions.map(t => [
-            formatDate(t.date),
-            `"${t.narration.replace(/"/g, '""')}"`, // escape quotes in CSV
-            t.type,
-            t.amount.toString()
-        ]);
+        if (format === 'csv') {
+            const headers = ["Date", "Narration", "Type", "Amount", "Balance"];
+            const rows = transactions.map(t => [
+                formatDate(t.date),
+                `"${t.narration.replace(/"/g, '""')}"`, // escape quotes in CSV
+                t.type,
+                t.amount.toString(),
+                t.balance.toString()
+            ]);
 
-        const csvContent = "data:text/csv;charset=utf-8,"
-            + headers.join(",") + "\n"
-            + rows.map(e => e.join(",")).join("\n");
+            const csvContent = "data:text/csv;charset=utf-8,"
+                + headers.join(",") + "\n"
+                + rows.map(e => e.join(",")).join("\n");
 
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `Passbook_${accountData?.accountNo || 'Member'}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Passbook_${accountData?.accountNo || 'Member'}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
 
-        toast({ title: "Downloaded", description: "Passbook downloaded successfully." });
+            toast({ title: "Downloaded", description: "Passbook downloaded successfully." });
+        } else {
+            // PDF format - generate HTML and convert
+            const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Digital Passbook - ${accountData?.accountNo || 'Member'}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #1e40af; padding-bottom: 20px; }
+    .account-info { margin-bottom: 20px; }
+    .account-info p { margin: 5px 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background-color: #1e40af; color: white; }
+    .credit { color: #059669; }
+    .debit { color: #dc2626; }
+    .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Digital Passbook</h1>
+    <p>Account Number: ${accountData?.accountNo || 'N/A'}</p>
+  </div>
+  <div class="account-info">
+    <p><strong>Available Balance:</strong> ${formatCurrency(accountData?.balance || 0, true)}</p>
+    <p><strong>Generated On:</strong> ${new Date().toLocaleDateString()}</p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Narration</th>
+        <th>Type</th>
+        <th>Amount</th>
+        <th>Balance</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${transactions.map(t => `
+        <tr>
+          <td>${formatDate(t.date)}</td>
+          <td>${t.narration}</td>
+          <td>${t.type}</td>
+          <td class="${t.type === 'CR' ? 'credit' : 'debit'}">${t.type === 'CR' ? '+' : '-'}${formatCurrency(t.amount, true)}</td>
+          <td>${formatCurrency(t.balance, true)}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+  <div class="footer">
+    <p>This is a system-generated passbook. For official purposes, please contact your society.</p>
+  </div>
+</body>
+</html>
+            `;
+
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `Passbook_${accountData?.accountNo || 'Member'}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            toast({ title: "Downloaded", description: "Passbook downloaded successfully." });
+        }
     };
 
     if (loading) {
@@ -124,8 +197,15 @@ export default function PortalAccountPage() {
                         <ArrowUpRight className="w-5 h-5 text-primary" /> Transfer funds
                     </Link>
                 </Button>
-                <Button variant="outline" onClick={handleDownloadPassbook} className="h-14 text-sm md:text-base gap-2 bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-all">
-                    <BookOpen className="w-5 h-5 text-primary" /> Download passbook
+                <div className="relative">
+                    <Button variant="outline" onClick={() => handleDownloadPassbook('csv')} className="h-14 w-full text-sm md:text-base gap-2 bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-all">
+                        <Download className="w-5 h-5 text-primary" /> Download CSV
+                    </Button>
+                </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3 mt-3">
+                <Button variant="outline" onClick={() => handleDownloadPassbook('pdf')} className="h-14 text-sm md:text-base gap-2 bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-all">
+                    <FileText className="w-5 h-5 text-primary" /> Download Passbook (HTML)
                 </Button>
             </div>
 

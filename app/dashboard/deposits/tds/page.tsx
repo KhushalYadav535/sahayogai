@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
 import { ArrowLeft, Shield, FileText, CheckCircle, RefreshCw, Download } from 'lucide-react';
-import { complianceApi } from '@/lib/api';
+import { complianceApi, depositsApi } from '@/lib/api';
 import { useAuth } from '@/components/providers/auth-provider';
 
 
@@ -233,9 +233,26 @@ export default function TDSManagementPage() {
                         {generated && certificates.map((cert, i) => (
                             <div key={cert.id || i} className="flex items-center justify-between p-3 rounded-lg border border-border">
                                 <div><p className="font-medium text-sm">{cert.member}</p><p className="text-xs text-muted-foreground">{cert.depositNo} • TDS: {formatCurrency(cert.tdsAmount, 0)}</p></div>
-                                <Button size="sm" variant="outline" onClick={() => window.open(cert.certificateUrl, '_blank')}>
-                                    <Download className="w-4 h-4 mr-1" /> Download
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button size="sm" variant="outline" onClick={async () => {
+                                        try {
+                                            const blob = await depositsApi.getForm16A(cert.id);
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement('a');
+                                            a.href = url;
+                                            a.download = `Form16A_${cert.depositNo}.html`;
+                                            a.click();
+                                            URL.revokeObjectURL(url);
+                                        } catch (e) {
+                                            alert('Failed to download Form 16A');
+                                        }
+                                    }}>
+                                        <FileText className="w-4 h-4 mr-1" /> Form 16A
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => window.open(cert.certificateUrl, '_blank')}>
+                                        <Download className="w-4 h-4 mr-1" /> View
+                                    </Button>
+                                </div>
                             </div>
                         ))}
                     </CardContent>

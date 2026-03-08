@@ -51,7 +51,7 @@ function getToken(): string | null {
   return (window as any).__sahayog_token || localStorage.getItem("sahayog-token");
 }
 
-function getMemberToken(): string | null {
+export function getMemberToken(): string | null {
   if (typeof window === "undefined") return null;
   return (window as any).__sahayog_member_token || localStorage.getItem("sahayog_member_token");
 }
@@ -114,10 +114,20 @@ export const tenantsApi = {
       body: JSON.stringify(body),
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
-  updateStatus: (id: string, status: "trial" | "active" | "suspended" | "inactive" | "reactivated" | "offboarded", token?: string) =>
+  updateStatus: (id: string, status: "trial" | "active" | "suspended" | "inactive" | "reactivated" | "offboarded", reason?: string, token?: string) =>
     api<{ success: boolean; tenant: any }>(`/platform/tenants/${id}/status`, {
       method: "PATCH",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, reason }),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  updatePlan: (id: string, plan: "starter" | "pro" | "enterprise", token?: string) =>
+    api<{ success: boolean; tenant: any }>(`/platform/tenants/${id}/plan`, {
+      method: "PATCH",
+      body: JSON.stringify({ plan }),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  getTrialStatus: (id: string, token?: string) =>
+    api<{ success: boolean; trial: { isTrial: boolean; trialEndsAt: string | null; daysRemaining: number; isExpired: boolean; shouldTransition: boolean } }>(`/platform/tenants/${id}/trial-status`, {
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
   getCredits: (id: string, token?: string) =>
@@ -183,6 +193,11 @@ export const jobsApi = {
     api<{ success: boolean; message: string; period: string }>("/jobs/usage-snapshot", {
       method: "POST",
       body: JSON.stringify(period ? { period } : {}),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  checkTrialExpiration: (token?: string) =>
+    api<{ success: boolean; message: string; transitioned: number }>("/jobs/trial-expiration-check", {
+      method: "POST",
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
   dayEnd: (token?: string) =>
@@ -272,6 +287,87 @@ export const membersApi = {
         headers: { Authorization: `Bearer ${token || getToken() || ""}` },
       }),
   },
+  // MEM-007: Member Ledger
+  getLedger: (id: string, params?: { startDate?: string; endDate?: string; accountType?: string; transactionType?: string; minAmount?: string; maxAmount?: string }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.startDate) q.set("startDate", params.startDate);
+    if (params?.endDate) q.set("endDate", params.endDate);
+    if (params?.accountType) q.set("accountType", params.accountType);
+    if (params?.transactionType) q.set("transactionType", params.transactionType);
+    if (params?.minAmount) q.set("minAmount", params.minAmount);
+    if (params?.maxAmount) q.set("maxAmount", params.maxAmount);
+    return api<{ success: boolean; member: any; ledger: any[]; total: number }>(
+      `/members/${id}/ledger?${q}`,
+      { headers: { Authorization: `Bearer ${token || getToken() || ""}` } }
+    );
+  },
+  // MEM-012: Joint Membership
+  linkJoint: (id: string, body: { jointMemberId: string; jointMode: "EITHER_OR_SURVIVOR" | "JOINTLY" }, token?: string) =>
+    api<{ success: boolean; message: string }>(`/members/${id}/joint-link`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  unlinkJoint: (id: string, token?: string) =>
+    api<{ success: boolean; message: string }>(`/members/${id}/joint-unlink`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // MEM-014: KYC Re-validation
+  revalidateKyc: (id: string, token?: string) =>
+    api<{ success: boolean; message: string }>(`/members/${id}/kyc/revalidate`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // MEM-016: Share Transfer
+  transferShares: (id: string, body: { targetMemberId: string; shares: number; faceValue: number; resolutionRef: string; remarks?: string }, token?: string) =>
+    api<{ success: boolean; message: string; transfer: any }>(`/members/${id}/shares/transfer`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // MEM-017: Suspension & Blacklisting
+  suspend: (id: string, body: { reasonCode: string; remarks?: string }, token?: string) =>
+    api<{ success: boolean; message: string; member: any }>(`/members/${id}/suspend`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  blacklist: (id: string, body: { reasonCode: string; remarks?: string }, token?: string) =>
+    api<{ success: boolean; message: string; member: any }>(`/members/${id}/blacklist`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  reactivate: (id: string, token?: string) =>
+    api<{ success: boolean; message: string; member: any }>(`/members/${id}/reactivate`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // MEM-018: Bulk Import
+  bulkImport: (body: { members: Array<Record<string, any>> }, token?: string) =>
+    api<{ success: boolean; imported: number; failed: number; results: any[]; errors: any[] }>("/members/bulk-import", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  getBulkImportTemplate: (token?: string) => {
+    return fetch(`${API_BASE}/members/bulk-import/template`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }).then(res => {
+      if (!res.ok) throw new Error('Failed to fetch template');
+      return res.blob();
+    });
+  },
+  // MEM-019: Membership Certificate
+  getCertificate: (id: string, token?: string) => {
+    return fetch(`${API_BASE}/members/${id}/certificate`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }).then(res => {
+      if (!res.ok) throw new Error('Failed to fetch certificate');
+      return res.text();
+    });
+  },
 };
 
 // Deposits (FDR/RD/MIS)
@@ -319,6 +415,48 @@ export const depositsApi = {
       `/deposits/maturing?${q}`,
       { headers: { Authorization: `Bearer ${token || getToken() || ""}` } }
     );
+  },
+  getCertificate: (id: string, token?: string) => {
+    return fetch(`${API_BASE}/deposits/${id}/certificate`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }).then(res => {
+      if (!res.ok) throw new Error('Failed to fetch certificate');
+      return res.blob();
+    });
+  },
+  withdraw: (id: string, token?: string) =>
+    api<{ success: boolean; principal: number; holdingMonths: number; penaltyRate: number; penalizedRate: number; totalInterest: number; tdsDeducted: number; netPayable: number }>(`/deposits/${id}/withdraw`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  lien: (id: string, body: { loanId?: string; action: "mark" | "clear" }, token?: string) =>
+    api<{ success: boolean; message: string }>(`/deposits/${id}/lien`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  mature: (id: string, body?: { action?: "credit_to_sb" | "auto_renew" | "manual" }, token?: string) =>
+    api<{ success: boolean; message: string; principal?: number; totalInterest?: number; tdsDeducted?: number; netPayable?: number; newDeposit?: any }>(`/deposits/${id}/mature`, {
+      method: "POST",
+      body: JSON.stringify(body || {}),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  getAnalytics: (params?: { startDate?: string; endDate?: string }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.startDate) q.set("startDate", params.startDate);
+    if (params?.endDate) q.set("endDate", params.endDate);
+    return api<{ success: boolean; analytics: any }>(
+      `/deposits/analytics/portfolio?${q}`,
+      { headers: { Authorization: `Bearer ${token || getToken() || ""}` } }
+    );
+  },
+  getForm16A: (id: string, token?: string) => {
+    return fetch(`${API_BASE}/deposits/form16a/${id}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }).then(res => {
+      if (!res.ok) throw new Error('Failed to fetch Form 16A');
+      return res.blob();
+    });
   },
 };
 
@@ -368,6 +506,46 @@ export const sbApi = {
       body: JSON.stringify(body),
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
+  getPassbook: (id: string, params?: { page?: number; limit?: number; startDate?: string; endDate?: string; format?: string; language?: string }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set("page", String(params.page));
+    if (params?.limit) q.set("limit", String(params.limit));
+    if (params?.startDate) q.set("startDate", params.startDate);
+    if (params?.endDate) q.set("endDate", params.endDate);
+    if (params?.format) q.set("format", params.format);
+    if (params?.language) q.set("language", params.language);
+    if (params?.format === "pdf" || params?.format === "excel") {
+      return fetch(`${API_BASE}/sb/accounts/${id}/passbook?${q}`, {
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }).then(res => {
+        if (!res.ok) throw new Error('Failed to fetch passbook');
+        return params.format === "pdf" ? res.text() : res.blob();
+      });
+    }
+    return api<{ success: boolean; transactions: any[]; total: number; account: any }>(
+      `/sb/accounts/${id}/passbook?${q}`,
+      { headers: { Authorization: `Bearer ${token || getToken() || ""}` } }
+    );
+  },
+  reactivate: (id: string, token?: string) =>
+    api<{ success: boolean; message: string; accountNumber: string }>(`/sb/accounts/${id}/reactivate`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // SB-008: Bulk Dividend Credit
+  bulkDividendCredit: (body: { dividendRate: number; resolutionRef: string; fiscalYear: string }, token?: string) =>
+    api<{ success: boolean; message: string; dividendRate: number; resolutionRef: string; fiscalYear: string; totalCredited: number; totalFailed: number; results: any[]; errors: any[] }>("/sb/dividend/bulk-credit", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // SB-011: AI Interest Anomaly Detection
+  checkInterestAnomaly: (body: { accountId: string; expectedInterest: number; actualInterest: number; period: string }, token?: string) =>
+    api<{ success: boolean; anomaly: boolean; message: string; deviationPercent?: number; expectedInterest?: number; actualInterest?: number }>("/sb/interest/anomaly-check", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
 };
 
 
@@ -385,12 +563,13 @@ export const glApi = {
         headers: { Authorization: `Bearer ${token || getToken() || ""}` },
       }),
   },
-  trialBalance: (params?: { period?: string; fromDate?: string; toDate?: string }, token?: string) => {
+  trialBalance: (params?: { period?: string; fromDate?: string; toDate?: string; excludeAuditAdj?: boolean }, token?: string) => {
     const q = new URLSearchParams();
     if (params?.period) q.set("period", params.period);
     if (params?.fromDate) q.set("fromDate", params.fromDate);
     if (params?.toDate) q.set("toDate", params.toDate);
-    return api<{ success: boolean; rows: any[]; totals: any }>(`/gl/trial-balance?${q}`, {
+    if (params?.excludeAuditAdj) q.set("excludeAuditAdj", "true");
+    return api<{ success: boolean; rows: any[]; totals: any; period?: string; isFrozen?: boolean; frozenAt?: string | null }>(`/gl/trial-balance?${q}`, {
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     });
   },
@@ -426,6 +605,13 @@ export const glApi = {
     },
     create: (body: { voucherType: string; date: string; narration?: string; totalAmount: number; entries: { glCode: string; glName: string; debit: number; credit: number; narration?: string }[] }, token?: string) =>
       api<{ success: boolean; voucher: any }>("/gl/vouchers", {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    // AI-005: Auto-Ledger Classification
+    suggestClassification: (body: { narration: string }, token?: string) =>
+      api<{ success: boolean; suggestion: { glCode: string; glName: string; confidence: number } | null }>("/gl/suggest-classification", {
         method: "POST",
         body: JSON.stringify(body),
         headers: { Authorization: `Bearer ${token || getToken() || ""}` },
@@ -540,6 +726,39 @@ export const meApi = {
       body: JSON.stringify(body),
       headers: { Authorization: `Bearer ${token || getMemberToken() || ""}` },
     }),
+
+  // MP-004: FDR Maturity Tracker
+  maturityTracker: (days?: number, token?: string) =>
+    api<{ success: boolean; deposits: any[]; total: number }>(`/me/deposits/maturity-tracker?days=${days || 30}`, {
+      headers: { Authorization: `Bearer ${token || getMemberToken() || ""}` },
+    }),
+
+  // MP-009: Share Certificate
+  shareCertificate: (token?: string) =>
+    api<{ success: boolean; member: any; totalShares: number; totalShareValue: number; shareLedger: any[] }>("/me/shares/certificate", {
+      headers: { Authorization: `Bearer ${token || getMemberToken() || ""}` },
+    }),
+
+  // MP-008: Grievance Submission
+  submitGrievance: (body: { category: string; subject: string; description: string; priority?: "low" | "medium" | "high" }, token?: string) =>
+    api<{ success: boolean; grievanceRef: string; message?: string }>("/me/grievance", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getMemberToken() || ""}` },
+    }),
+
+  // MP-007: Notification Preferences
+  getNotificationPreferences: (token?: string) =>
+    api<{ success: boolean; preferences: any }>("/me/notifications/preferences", {
+      headers: { Authorization: `Bearer ${token || getMemberToken() || ""}` },
+    }),
+
+  updateNotificationPreferences: (preferences: any, token?: string) =>
+    api<{ success: boolean; preferences: any; message?: string }>("/me/notifications/preferences", {
+      method: "PUT",
+      body: JSON.stringify(preferences),
+      headers: { Authorization: `Bearer ${token || getMemberToken() || ""}` },
+    }),
 };
 
 // Users (tenant-scoped)
@@ -624,6 +843,22 @@ export const reportsApi = {
       kpis: { totalPortfolio: number; totalNpa: number; activeLoans: number; avgLoanSize: number };
       officerPerformance: any[];
     }>("/reports/portfolio", { headers: { Authorization: `Bearer ${token || getToken() || ""}` } }),
+  directorKpi: (token?: string) =>
+    api<{
+      success: boolean;
+      kpis: Array<{ name: string; value: string; formula: string; status: 'GREEN' | 'AMBER' | 'RED'; trend?: string; variance?: string }>;
+    }>("/reports/director-kpi", { headers: { Authorization: `Bearer ${token || getToken() || ""}` } }),
+  memberAnalytics: (token?: string) =>
+    api<{
+      success: boolean;
+      summary: { totalMembers: number; activeMembers: number; newMembersThisWeek: number; newMembersThisMonth: number; growthRate: string };
+      byStatus: Array<{ status: string; count: number }>;
+      byGender: Array<{ gender: string; count: number }>;
+      byAgeGroup: Array<{ range: string; count: number }>;
+      kycStatus: Array<{ status: string; count: number }>;
+      topMembersBySavings: Array<{ memberName: string; memberNumber: string; balance: number }>;
+      topMembersByLoans: Array<{ memberName: string; memberNumber: string; outstanding: number }>;
+    }>("/reports/member-analytics", { headers: { Authorization: `Bearer ${token || getToken() || ""}` } }),
 };
 
 // Dashboard (tenant-scoped KPIs and recent activity)
@@ -679,6 +914,12 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  changePassword: (body: { currentPassword: string; newPassword: string }, token?: string) =>
+    api<{ success: boolean; message: string }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
 };
 
 // Tenant MDA config (MT-003 - tenant admin)
@@ -706,16 +947,82 @@ export const tenantMdaApi = {
 
 // Governance (Module 2)
 export const governanceApi = {
-  bod: { list: (t?: string) => api<{ success: boolean; directors: any[] }>("/governance/bod", { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }), create: (b: any, t?: string) => api<{ success: boolean; director: any }>("/governance/bod", { method: "POST", body: JSON.stringify(b), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }) },
-  committees: { list: (t?: string) => api<{ success: boolean; committees: any[] }>("/governance/committees", { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }), create: (b: any, t?: string) => api<{ success: boolean; committee: any }>("/governance/committees", { method: "POST", body: JSON.stringify(b), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }) },
-  agm: { list: (t?: string) => api<{ success: boolean; agms: any[] }>("/governance/agm", { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }), create: (b: any, t?: string) => api<{ success: boolean; agm: any }>("/governance/agm", { method: "POST", body: JSON.stringify(b), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }) },
-  resolutions: { list: (p?: { search?: string; status?: string }, t?: string) => { const q = new URLSearchParams(); if (p?.search) q.set("search", p.search); if (p?.status) q.set("status", p.status); return api<{ success: boolean; resolutions: any[] }>(`/governance/resolutions?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }); }, create: (b: any, t?: string) => api<{ success: boolean; resolution: any }>("/governance/resolutions", { method: "POST", body: JSON.stringify(b), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }) },
-  complianceEvents: { list: (p?: { from?: string; to?: string }, t?: string) => { const q = new URLSearchParams(); if (p?.from) q.set("from", p.from); if (p?.to) q.set("to", p.to); return api<{ success: boolean; events: any[] }>(`/governance/compliance-events?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }); }, create: (b: any, t?: string) => api<{ success: boolean; event: any }>("/governance/compliance-events", { method: "POST", body: JSON.stringify(b), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }) },
+  bod: {
+    list: (t?: string) => api<{ success: boolean; data: any[] }>("/governance/bod", { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+    create: (b: any, t?: string) => api<{ success: boolean; data: any }>("/governance/bod", { method: "POST", body: JSON.stringify(b), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  },
+  committees: {
+    list: (t?: string) => api<{ success: boolean; data: any[] }>("/governance/committees", { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+    create: (b: any, t?: string) => api<{ success: boolean; data: any }>("/governance/committees", { method: "POST", body: JSON.stringify(b), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  },
+  agm: {
+    list: (t?: string) => api<{ success: boolean; data: any[] }>("/governance/agm", { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+    create: (b: any, t?: string) => api<{ success: boolean; data: any }>("/governance/agm", { method: "POST", body: JSON.stringify(b), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+    recordAttendance: (id: string, body: { attendance: any[] }, t?: string) => api<{ success: boolean; message: string }>(`/governance/agm/${id}/attendance`, { method: "POST", body: JSON.stringify(body), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+    sendNotice: (id: string, t?: string) => api<{ success: boolean; message: string }>(`/governance/agm/${id}/send-notice`, { method: "POST", headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  },
+  resolutions: {
+    list: (p?: { search?: string; status?: string; meetingType?: string; startDate?: string; endDate?: string }, t?: string) => {
+      const q = new URLSearchParams();
+      if (p?.search) q.set("search", p.search);
+      if (p?.status) q.set("status", p.status);
+      if (p?.meetingType) q.set("meetingType", p.meetingType);
+      if (p?.startDate) q.set("startDate", p.startDate);
+      if (p?.endDate) q.set("endDate", p.endDate);
+      return api<{ success: boolean; data: any[]; total: number }>(`/governance/resolutions?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } });
+    },
+    create: (b: any, t?: string) => api<{ success: boolean; data: any }>("/governance/resolutions", { method: "POST", body: JSON.stringify(b), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  },
+  complianceEvents: {
+    list: (p?: { from?: string; to?: string }, t?: string) => {
+      const q = new URLSearchParams();
+      if (p?.from) q.set("from", p.from);
+      if (p?.to) q.set("to", p.to);
+      return api<{ success: boolean; data: any[] }>(`/governance/compliance-events?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } });
+    },
+    create: (b: any, t?: string) => api<{ success: boolean; data: any }>("/governance/compliance-events", { method: "POST", body: JSON.stringify(b), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  },
+  // GOV-006: By-law Repository
+  bylaws: {
+    list: (t?: string) => api<{ success: boolean; data: any[] }>("/governance/bylaws", { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+    create: (b: any, t?: string) => api<{ success: boolean; data: any }>("/governance/bylaws", { method: "POST", body: JSON.stringify(b), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  },
+  // GOV-007: Meeting Minutes & Action Items
+  minutes: {
+    create: (meetingId: string, body: any, t?: string) => api<{ success: boolean; data: any }>(`/governance/meetings/${meetingId}/minutes`, { method: "POST", body: JSON.stringify(body), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+    list: (meetingId: string, t?: string) => api<{ success: boolean; data: any[] }>(`/governance/meetings/${meetingId}/minutes`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+    finalize: (id: string, t?: string) => api<{ success: boolean; data: any }>(`/governance/minutes/${id}/finalize`, { method: "POST", headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+    updateActionItem: (minutesId: string, itemId: string, body: { status: string }, t?: string) => api<{ success: boolean; message: string }>(`/governance/action-items/${minutesId}/${itemId}`, { method: "PATCH", body: JSON.stringify(body), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  },
+  // GOV-010: Exception Override Tracking
+  overrides: {
+    list: (p?: { transactionType?: string; startDate?: string; endDate?: string }, t?: string) => {
+      const q = new URLSearchParams();
+      if (p?.transactionType) q.set("transactionType", p.transactionType);
+      if (p?.startDate) q.set("startDate", p.startDate);
+      if (p?.endDate) q.set("endDate", p.endDate);
+      return api<{ success: boolean; data: any[]; total: number }>(`/governance/approvals/overrides?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } });
+    },
+    create: (body: any, t?: string) => api<{ success: boolean; data: any }>("/governance/approvals/override", { method: "POST", body: JSON.stringify(body), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  },
+  // GOV-008: Maker-Checker Threshold Configuration
+  thresholds: {
+    list: (p?: { transactionType?: string }, t?: string) => {
+      const q = new URLSearchParams();
+      if (p?.transactionType) q.set("transactionType", p.transactionType);
+      return api<{ success: boolean; data: any[] }>(`/governance/approval-thresholds?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } });
+    },
+    create: (body: any, t?: string) => api<{ success: boolean; data: any }>("/governance/approval-thresholds", { method: "POST", body: JSON.stringify(body), headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  },
 };
 
 // Compliance (Module 10)
 export const complianceApi = {
+  // COM-001: NABARD Report
   nabard: (period?: string, t?: string) => api<{ success: boolean; report: any }>(`/compliance/nabard-report${period ? `?period=${period}` : ""}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  // COM-002: Registrar Return
+  registrarReturn: (fy?: string, t?: string) => api<{ success: boolean; report: any }>(`/compliance/registrar-return${fy ? `?fy=${fy}` : ""}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  // COM-003: TDS 26Q
   tds26q: (quarter?: string, t?: string) => api<{ success: boolean; report: any }>(`/compliance/tds-26q${quarter ? `?quarter=${quarter}` : ""}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
   tdsRecords: (fy?: string, t?: string) => api<{ success: boolean; records: any[]; summary: any }>(`/compliance/tds-records${fy ? `?fy=${fy}` : ""}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
   tdsQuarterly: (fy?: string, t?: string) => api<{ success: boolean; quarterly: any[]; fy: string }>(`/compliance/tds-quarterly${fy ? `?fy=${fy}` : ""}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
@@ -724,11 +1031,171 @@ export const complianceApi = {
     body: JSON.stringify({ fy }),
     headers: { Authorization: `Bearer ${t || getToken() || ""}` },
   }),
+  // COM-004: 26AS/AIS
+  a26asAis: (params?: { fy?: string; pan?: string }, t?: string) => {
+    const q = new URLSearchParams();
+    if (params?.fy) q.set("fy", params.fy);
+    if (params?.pan) q.set("pan", params.pan);
+    return api<{ success: boolean; format: string; financialYear: string; records: any[]; totalRecords: number; totalTDS: number; generatedAt: string }>(`/compliance/26as-ais?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } });
+  },
+  // COM-005: STR
   str: (from?: string, to?: string, t?: string) => { const q = new URLSearchParams(); if (from) q.set("from", from); if (to) q.set("to", to); return api<{ success: boolean; report: any }>(`/compliance/str?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }); },
+  // COM-006: AML
   aml: (from?: string, t?: string) => api<{ success: boolean; report: any }>(`/compliance/aml${from ? `?from=${from}` : ""}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  // COM-007: Compliance Dashboard
+  dashboard: (t?: string) => api<{ success: boolean; dashboard: any }>("/compliance/dashboard", { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  // COM-008: Member Due Report
+  memberDueReport: (params?: { memberId?: string; status?: string }, t?: string) => {
+    const q = new URLSearchParams();
+    if (params?.memberId) q.set("memberId", params.memberId);
+    if (params?.status) q.set("status", params.status);
+    return api<{ success: boolean; report: any }>(`/compliance/member-due-report?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } });
+  },
+  // COM-009: Member Ledger
+  memberLedger: (params: { memberId: string; from?: string; to?: string }, t?: string) => {
+    const q = new URLSearchParams();
+    q.set("memberId", params.memberId);
+    if (params.from) q.set("from", params.from);
+    if (params.to) q.set("to", params.to);
+    return api<{ success: boolean; report: any }>(`/compliance/member-ledger?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } });
+  },
+  // COM-010: Member List
+  memberList: (params?: { status?: string; format?: string }, t?: string) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.format) q.set("format", params.format);
+    return api<{ success: boolean; report: any }>(`/compliance/member-list?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } });
+  },
+  // COM-011: Audit Support Package
+  auditSupportPackage: (fy?: string, t?: string) => api<{ success: boolean; package: any }>(`/compliance/audit-support-package${fy ? `?fy=${fy}` : ""}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  // COM-012: SLR/CRR Report
+  slrCrrReport: (month?: string, t?: string) => api<{ success: boolean; report: any }>(`/compliance/slr-crr-report${month ? `?month=${month}` : ""}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } }),
+  // COM-013: GST Invoice
+  gstInvoice: (params: { transactionId: string; type: string }, t?: string) => {
+    const q = new URLSearchParams();
+    q.set("transactionId", params.transactionId);
+    q.set("type", params.type);
+    return api<{ success: boolean; invoice: any; format: string; generatedAt: string }>(`/compliance/gst-invoice?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } });
+  },
+  // COM-014: Loan Schedule Report
+  loanScheduleReport: (params?: { loanId?: string; status?: string }, t?: string) => {
+    const q = new URLSearchParams();
+    if (params?.loanId) q.set("loanId", params.loanId);
+    if (params?.status) q.set("status", params.status);
+    return api<{ success: boolean; report: any }>(`/compliance/loan-schedule-report?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } });
+  },
+  // COM-015: Deposit Maturity Schedule
+  depositMaturitySchedule: (params?: { from?: string; to?: string; depositType?: string }, t?: string) => {
+    const q = new URLSearchParams();
+    if (params?.from) q.set("from", params.from);
+    if (params?.to) q.set("to", params.to);
+    if (params?.depositType) q.set("depositType", params.depositType);
+    return api<{ success: boolean; report: any }>(`/compliance/deposit-maturity-schedule?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } });
+  },
+  // COM-016: Regulatory Notifications
+  regulatoryNotifications: (unread?: boolean, t?: string) => {
+    const q = new URLSearchParams();
+    if (unread) q.set("unread", "true");
+    return api<{ success: boolean; notifications: any[]; unreadCount: number }>(`/compliance/regulatory-notifications?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } });
+  },
+  // COM-017: Income Tax Exports
+  incomeTaxExports: (params?: { fy?: string; format?: string; memberId?: string }, t?: string) => {
+    const q = new URLSearchParams();
+    if (params?.fy) q.set("fy", params.fy);
+    if (params?.format) q.set("format", params.format);
+    if (params?.memberId) q.set("memberId", params.memberId);
+    return api<{ success: boolean; export: any }>(`/compliance/income-tax-exports?${q}`, { headers: { Authorization: `Bearer ${t || getToken() || ""}` } });
+  },
 };
 
 // AI Alerts (Bytez-powered)
+export const aiApi = {
+  // LN-019: Predictive NPA Alerts
+  npaPredictiveAlerts: (token?: string) =>
+    api<{ success: boolean; alerts: any[]; totalAlerts: number; highRiskCount: number; mediumRiskCount: number }>("/ai/npa-predictive-alerts", {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // AI-009: Compliance Monitoring Alerts
+  complianceAlerts: (token?: string) =>
+    api<{ success: boolean; alerts: any[]; totalAlerts: number }>("/ai/compliance-alerts", {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // AI-012: Conversational AI
+  chat: (body: { query: string; memberId?: string }, token?: string) =>
+    api<{ success: boolean; response: string; responseType: string; timestamp: string }>("/ai/chat", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // AI-015: Model Versioning
+  models: {
+    list: (token?: string) =>
+      api<{ success: boolean; models: any[] }>("/ai/models", {
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    rollback: (body: { modelId: string; targetVersion: string }, token?: string) =>
+      api<{ success: boolean; message: string }>("/ai/models/rollback", {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    // AI-019: Performance Monitoring
+    performance: (modelId: string, params?: { period?: string }, token?: string) => {
+      const q = new URLSearchParams();
+      if (params?.period) q.set("period", params.period);
+      return api<{
+        success: boolean;
+        modelId: string;
+        period: string;
+        activeVersion: string;
+        versionMetrics: Array<{
+          version: string;
+          totalInvocations: number;
+          successRate: number;
+          errorRate: number;
+          avgLatencyMs: number;
+          avgConfidence: number;
+          p95LatencyMs: number;
+          p99LatencyMs: number;
+          overrideRate: number;
+          lastInvocation: string | null;
+        }>;
+        timeSeries: Array<{
+          date: string;
+          invocations: number;
+          errors: number;
+          avgLatency: number;
+          avgConfidence: number;
+        }>;
+        alerts: Array<{ type: string; severity: string; message: string }>;
+        summary: {
+          totalInvocations: number;
+          activeVersionInvocations: number;
+          totalVersions: number;
+        };
+      }>(`/ai/models/${modelId}/performance?${q}`, {
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      });
+    },
+  },
+  // AI-016: Human Override
+  override: (body: { decisionId: string; reasonCode: string; reasonDescription: string }, token?: string) =>
+    api<{ success: boolean; message: string }>("/ai/override", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // AI-018: Bias Audit
+  biasAudit: (params?: { modelId?: string; period?: string }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.modelId) q.set("modelId", params.modelId);
+    if (params?.period) q.set("period", params.period);
+    return api<{ success: boolean; report: any }>(`/ai/bias-audit?${q}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    });
+  },
+};
+
 export const aiAlertsApi = {
   list: (token?: string) =>
     api<{ success: boolean; alerts: any[] }>("/ai/alerts", {
@@ -810,7 +1277,296 @@ export const approvalsApi = {
 };
 
 // Loans
+// Module 8: Risk & Controls
+// Module 9 — Security & RBAC
+export const securityApi = {
+  // SEC-001: RBAC Permissions
+  permissions: {
+    list: (token?: string) =>
+      api<{ success: boolean; data: any[] }>("/security/permissions", {
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    update: (body: { role: string; permissions: string[] }, token?: string) =>
+      api<{ success: boolean; data: any }>("/security/permissions", {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+  },
+  roles: {
+    assign: (body: { userId: string; role: string; reason?: string }, token?: string) =>
+      api<{ success: boolean; message: string }>("/security/roles/assign", {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    assignments: (token?: string) =>
+      api<{ success: boolean; data: any[] }>("/security/roles/assignments", {
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+  },
+  // SEC-002: MFA
+  mfa: {
+    setup: (token?: string) =>
+      api<{ success: boolean; data: { secret: string; qrCodeUrl: string; backupCodes: string[]; manualEntryKey: string } }>("/security/mfa/setup", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    verify: (body: { code?: string; backupCode?: string }, token?: string) =>
+      api<{ success: boolean; message: string }>("/security/mfa/verify", {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    disable: (token?: string) =>
+      api<{ success: boolean; message: string }>("/security/mfa/disable", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    status: (token?: string) =>
+      api<{ success: boolean; data: { mfaEnabled: boolean; mfaMethod: string | null; backupCodesRemaining: number } }>("/security/mfa/status", {
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+  },
+  // SEC-005: DPDP Act 2023 Compliance
+  dpdp: {
+    accessRequest: {
+      create: (body: { memberId: string }, token?: string) =>
+        api<{ success: boolean; data: any }>("/security/dpdp/access-request", {
+          method: "POST",
+          body: JSON.stringify(body),
+          headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+        }),
+      list: (token?: string) =>
+        api<{ success: boolean; data: any[] }>("/security/dpdp/access-requests", {
+          headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+        }),
+      fulfill: (id: string, token?: string) =>
+        api<{ success: boolean; data: any }>(`/security/dpdp/access-requests/${id}/fulfill`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+        }),
+    },
+    correctionRequest: {
+      create: (body: { memberId: string; field: string; newValue: string; reason?: string }, token?: string) =>
+        api<{ success: boolean; data: any }>("/security/dpdp/correction-request", {
+          method: "POST",
+          body: JSON.stringify(body),
+          headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+        }),
+      approve: (id: string, token?: string) =>
+        api<{ success: boolean; data: any }>(`/security/dpdp/correction-requests/${id}/approve`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+        }),
+    },
+    erasureRequest: {
+      create: (body: { memberId: string; erasureType: "FULL" | "PARTIAL" | "ANONYMIZE"; reason?: string }, token?: string) =>
+        api<{ success: boolean; data: any }>("/security/dpdp/erasure-request", {
+          method: "POST",
+          body: JSON.stringify(body),
+          headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+        }),
+      process: (id: string, token?: string) =>
+        api<{ success: boolean; data: any }>(`/security/dpdp/erasure-requests/${id}/process`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+        }),
+    },
+    consent: {
+      record: (body: { memberId: string; purpose: string; consentGiven: boolean }, token?: string) =>
+        api<{ success: boolean; data: any }>("/security/dpdp/consent", {
+          method: "POST",
+          body: JSON.stringify(body),
+          headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+        }),
+      list: (params: { memberId: string }, token?: string) => {
+        const q = new URLSearchParams();
+        q.set("memberId", params.memberId);
+        return api<{ success: boolean; data: any[] }>(`/security/dpdp/consent?${q}`, {
+          headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+        });
+      },
+    },
+  },
+};
+
+export const riskControlsApi = {
+  // RSK-003: Sessions
+  sessions: {
+    list: (params?: { userId?: string }, token?: string) => {
+      const q = new URLSearchParams();
+      if (params?.userId) q.set("userId", params.userId);
+      return api<{ success: boolean; sessions: any[] }>(`/risk-controls/sessions?${q}`, {
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      });
+    },
+    delete: (id: string, token?: string) =>
+      api<{ success: boolean; message: string }>(`/risk-controls/sessions/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+  },
+  // RSK-002: Daily Limits
+  dailyLimits: (params?: { userId?: string; accountId?: string }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.userId) q.set("userId", params.userId);
+    if (params?.accountId) q.set("accountId", params.accountId);
+    return api<{ success: boolean; limits: any[] }>(`/risk-controls/daily-limits?${q}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    });
+  },
+  // RSK-005: Password Expiry
+  passwordExpiry: (token?: string) =>
+    api<{
+      success: boolean;
+      passwordChangedAt: string;
+      daysUntilExpiry: number;
+      alertLevel: "NONE" | "WARNING" | "CRITICAL" | "EXPIRED";
+      forceExpired: boolean;
+    }>("/risk-controls/password-expiry", {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  forcePasswordExpire: (userId: string, token?: string) =>
+    api<{ success: boolean; message: string }>(`/risk-controls/password-expiry/${userId}/force-expire`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // RSK-006: Data Masking
+  unmask: (
+    body: { field: string; entityType: string; entityId: string; purpose?: string },
+    token?: string
+  ) =>
+    api<{ success: boolean; message: string }>("/risk-controls/data-masking/unmask", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // RSK-007: Backup Verification
+  backupVerification: (params?: { days?: number }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.days) q.set("days", params.days.toString());
+    return api<{ success: boolean; verifications: any[] }>(`/risk-controls/backup-verification?${q}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    });
+  },
+  // RSK-010: Audit Log Hash Chain
+  auditLogHashChain: (params?: { from?: string; to?: string }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.from) q.set("from", params.from);
+    if (params?.to) q.set("to", params.to);
+    return api<{
+      success: boolean;
+      totalLogs: number;
+      hashChainLength: number;
+      allValid: boolean;
+      hashChain: Array<{ auditLogId: string; hash: string; isValid: boolean }>;
+    }>(`/risk-controls/audit-log-hash-chain?${q}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    });
+  },
+  // RSK-011: Data Retention
+  dataRetention: (params?: { category?: string; status?: string }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.category) q.set("category", params.category);
+    if (params?.status) q.set("status", params.status);
+    return api<{ success: boolean; retention: any[] }>(`/risk-controls/data-retention?${q}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    });
+  },
+  // RSK-012: AML Alerts
+  amlAlerts: (params?: { status?: string }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    return api<{ success: boolean; alerts: any[] }>(`/risk-controls/aml-alerts?${q}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    });
+  },
+  reviewAmlAlert: (
+    id: string,
+    body: { action: "REVIEWED" | "DISMISSED" | "STR_GENERATED"; notes?: string },
+    token?: string
+  ) =>
+    api<{ success: boolean; message: string }>(`/risk-controls/aml-alerts/${id}/review`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+};
+
 export const loansApi = {
+  // LN-010: Restructuring/Refinance
+  restructure: (id: string, body: { newTenureMonths?: number; newEmiAmount?: number; moratoriumExtensionMonths?: number; bodResolutionRef: string; remarks?: string }, token?: string) =>
+    api<{ success: boolean; message: string; newTenureMonths: number; newEmiAmount: number; restructureCount: number }>(`/loans/${id}/restructure`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  refinance: (id: string, body: { newLoanAmount: number; newInterestRate: number; newTenureMonths: number; bodResolutionRef: string; remarks?: string }, token?: string) =>
+    api<{ success: boolean; message: string; oldLoan: any; newLoan: any; preclosureCharge: number }>(`/loans/${id}/refinance`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  externalRefinance: (id: string, body: { refinanceSource: "DCCB" | "NABARD" | "OTHER"; refinanceAmount: number; refinanceDate: string; documentRef: string; remarks?: string }, token?: string) =>
+    api<{ success: boolean; message: string; refinanceAmount: number; documentRef: string }>(`/loans/${id}/external-refinance`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // LN-014: Guarantor
+  addGuarantor: (id: string, body: { guarantorMemberId?: string; guarantorName?: string; guarantorIncome: number; guaranteeAmount: number }, token?: string) =>
+    api<{ success: boolean; message: string }>(`/loans/${id}/guarantor`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // LN-018: NPA Recovery
+  recoveryReport: (token?: string) =>
+    api<{ success: boolean; report: any[]; totalWriteOff: number; totalRecovered: number }>("/loans/npa/recovery-report", {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // LN-020: NACH Mandate
+  createNachMandate: (id: string, body: { mandateId: string; bankAccount: string; umrn?: string; status: "ACTIVE" | "CANCELLED" | "EXPIRED"; startDate: string; endDate?: string }, token?: string) =>
+    api<{ success: boolean; message: string; mandateId: string; umrn?: string }>(`/loans/${id}/nach-mandate`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // LN-023: Group Loan/JLG
+  createGroupLoan: (body: { groupName: string; groupType?: "JLG" | "SHG" | "OTHER"; memberIds: string[]; individualLoanAmounts: number[] }, token?: string) =>
+    api<{ success: boolean; groupLoan: any; groupCode: string }>("/loans/group-loans", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  listGroupLoans: (token?: string) =>
+    api<{ success: boolean; groupLoans: any[] }>("/loans/group-loans", {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  disburseGroupLoan: (id: string, body: { interestRate: number; tenureMonths: number }, token?: string) =>
+    api<{ success: boolean; message: string; groupLoan: any; loans: any[] }>(`/loans/group-loans/${id}/disburse`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // LN-024: CIBIL/Experian
+  checkCibil: (applicationId: string, token?: string) =>
+    api<{ success: boolean; cibilScore: number; cibilReportId: string; reportDate: string; message: string }>(`/loans/applications/${applicationId}/cibil-check`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  checkExperian: (applicationId: string, token?: string) =>
+    api<{ success: boolean; experianScore: number; experianReportId: string; reportDate: string; message: string }>(`/loans/applications/${applicationId}/experian-check`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  updateCreditBureauScores: (loanId: string, body: { cibilScore?: number; cibilReportId?: string; experianScore?: number; experianReportId?: string }, token?: string) =>
+    api<{ success: boolean; message: string }>(`/loans/${loanId}/credit-bureau-scores`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
   get: (id: string, token?: string) =>
     api<{ success: boolean; loan: any }>(`/loans/${id}`, {
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
@@ -842,10 +1598,121 @@ export const loansApi = {
       body: JSON.stringify(body),
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
-  writeOff: (id: string, body: { writeOffAmount: number; remarks?: string }, token?: string) =>
-    api<{ success: boolean; loan: any }>(`/loans/${id}/write-off`, {
+  getApplication: (id: string, token?: string) =>
+    api<{ success: boolean; application: any }>(`/loans/applications/${id}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  approveApplication: (id: string, body: { remarks?: string }, token?: string) =>
+    api<{ success: boolean; application: any }>(`/loans/applications/${id}/approve`, {
       method: "POST",
       body: JSON.stringify(body),
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  rejectApplication: (id: string, body: { remarks: string }, token?: string) =>
+    api<{ success: boolean; application: any }>(`/loans/applications/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // AI-002: AI Loan Underwriting Co-Pilot
+  getCopilot: (id: string, token?: string) =>
+    api<{
+      success: boolean;
+      riskScore: number;
+      riskCategory: string;
+      riskFlags: string[];
+      recommendations: string[];
+      comparableLoans: Array<{ amount: number; tenure: number; outcome: string }>;
+      repaymentCapacity: number;
+      recommendedAmount: number;
+    }>(`/loans/applications/${id}/copilot`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  // ACC-010: Audit Adjustment Entries
+  createAuditAdjustment: (body: {
+    date: string;
+    narration?: string;
+    totalAmount: number;
+    entries: Array<{ glCode: string; glName: string; debit: number; credit: number; narration?: string }>;
+    auditAccessStartDate: string;
+    auditAccessEndDate: string;
+  }, token?: string) =>
+    api<{ success: boolean; voucher: any }>("/gl/vouchers", {
+      method: "POST",
+      body: JSON.stringify({
+        ...body,
+        voucherType: "AUDIT_ADJ",
+        isAuditAdjustment: true,
+      }),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  writeOff: (id: string, body: { writeOffAmount: number; bodResolutionRef: string; remarks?: string }, token?: string) =>
+    api<{ success: boolean; message: string; writeOffAmount: number; bodResolutionRef: string }>(`/loans/${id}/write-off`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  recovery: (id: string, body: { amount: number; recoveryDate?: string; recoveryMode?: "CASH" | "BANK_TRANSFER" | "ASSET_SALE" | "LEGAL_SETTLEMENT" | "OTHER"; remarks?: string }, token?: string) =>
+    api<{ success: boolean; message: string; recoveredAmount: number; totalRecovered: number; recoveryPercent: number }>(`/loans/${id}/recovery`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+};
+
+// Integrations (Module 11)
+export const integrationsApi = {
+  // INT-001: Aadhaar eKYC
+  aadhaarEkycInitiate: (data: { aadhaarNumber: string; memberId?: string }, t?: string) =>
+    api<{ success: boolean; otpReference: string; message: string; maskedAadhaar: string }>("/integrations/aadhaar/ekyc/initiate", {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${t || getToken() || ""}` },
+    }),
+  aadhaarEkycVerify: (data: { otpReference: string; otp: string; memberId?: string }, t?: string) =>
+    api<{ success: boolean; uidToken: string; identityAttributes: any; message: string }>("/integrations/aadhaar/ekyc/verify", {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${t || getToken() || ""}` },
+    }),
+  // INT-002: UPI
+  upiGenerateQr: (data: { amount: number; purpose: string; transactionId?: string; upiId?: string }, t?: string) =>
+    api<{ success: boolean; orderId: string; paymentLink: string; qrCode: string; amount: number; expiresAt: string }>("/integrations/upi/generate-qr", {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${t || getToken() || ""}` },
+    }),
+  // INT-005: SMS
+  smsSend: (data: { to: string; templateId: string; params?: Record<string, string>; memberId?: string }, t?: string) =>
+    api<{ success: boolean; messageId: string; message: string }>("/integrations/sms/send", {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${t || getToken() || ""}` },
+    }),
+  // INT-011: Payment Gateway
+  paymentGatewayCreateOrder: (data: { amount: number; purpose: string; transactionId?: string; gateway?: "razorpay" | "payu" }, t?: string) =>
+    api<{ success: boolean; orderId: string; gateway: string; amount: number; key: string; gatewayOrderId: string }>("/integrations/payment-gateway/create-order", {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${t || getToken() || ""}` },
+    }),
+  // INT-003: NACH
+  nachRegister: (data: { memberId: string; bankAccount: string; amount: number; frequency: "MONTHLY" | "QUARTERLY" | "YEARLY"; startDate: string }, t?: string) =>
+    api<{ success: boolean; mandateId: string; message: string }>("/integrations/nach/register", {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${t || getToken() || ""}` },
+    }),
+  // INT-014: Bulk Export
+  bulkExport: (type: string, format?: string, t?: string) =>
+    api<any>(`/integrations/bulk-export/${type}${format ? `?format=${format}` : ""}`, {
+      headers: { Authorization: `Bearer ${t || getToken() || ""}` },
+    }),
+  // INT-014: Bulk Import
+  bulkImport: (type: string, data: { data: any[]; validateOnly?: boolean }, t?: string) =>
+    api<{ success: boolean; imported: number; failed: number; results: any[]; errors: any[] }>(`/integrations/bulk-import/${type}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${t || getToken() || ""}` },
     }),
 };
