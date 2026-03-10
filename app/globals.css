@@ -4,107 +4,121 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Light Mode: Trust-building fintech colors */
-  /* Primary: Deep Blue (Trust, Security) */
-  --primary: 227 90% 30%;
-  --primary-foreground: 0 0% 100%;
-  
-  /* Accent: Emerald Green (Growth, Prosperity) */
-  --accent: 150 65% 40%;
-  --accent-foreground: 0 0% 100%;
-  
+  /* Primary: Rich Royal Blue */
+  --primary: hsl(227 90% 30%);
+  --primary-foreground: hsl(0 0% 100%);
+
+  /* Accent: Vivid Emerald Green */
+  --accent: hsl(150 65% 40%);
+  --accent-foreground: hsl(0 0% 100%);
+
   /* Neutrals */
-  --background: 0 0% 98%;
-  --foreground: 0 0% 12%;
-  --card: 0 0% 100%;
-  --card-foreground: 0 0% 12%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 12%;
-  
-  /* Secondary: Warm Orange (Reliability) */
-  --secondary: 33 95% 45%;
-  --secondary-foreground: 0 0% 100%;
-  
+  --background: hsl(220 20% 97%);
+  --foreground: hsl(220 25% 10%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(220 25% 10%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(220 25% 10%);
+
+  /* Secondary: Warm Amber */
+  --secondary: hsl(33 95% 45%);
+  --secondary-foreground: hsl(0 0% 100%);
+
   /* Muted colors */
-  --muted: 0 0% 92%;
-  --muted-foreground: 0 0% 45%;
-  
+  --muted: hsl(220 15% 92%);
+  --muted-foreground: hsl(220 10% 45%);
+
   /* UI elements */
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 0 0% 88%;
-  --input: 0 0% 95%;
-  --ring: 227 90% 45%;
-  
-  /* Chart colors for data visualization */
-  --chart-1: 227 90% 40%;
-  --chart-2: 150 65% 45%;
-  --chart-3: 33 95% 50%;
-  --chart-4: 14 89% 55%;
-  --chart-5: 262 85% 50%;
-  
-  /* Sidebar theming */
-  --sidebar: 0 0% 100%;
-  --sidebar-foreground: 0 0% 12%;
-  --sidebar-primary: 227 90% 30%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 150 65% 40%;
-  --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-border: 0 0% 88%;
-  --sidebar-ring: 227 90% 45%;
-  
+  --destructive: hsl(0 84% 60%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(220 15% 88%);
+  --input: hsl(220 15% 93%);
+  --ring: hsl(227 90% 45%);
+
+  /* Success / Warning / Info */
+  --success: hsl(150 65% 40%);
+  --success-foreground: hsl(0 0% 100%);
+  --warning: hsl(38 95% 50%);
+  --warning-foreground: hsl(38 95% 15%);
+  --info: hsl(210 95% 55%);
+  --info-foreground: hsl(0 0% 100%);
+
+  /* Chart colors */
+  --chart-1: hsl(227 90% 40%);
+  --chart-2: hsl(150 65% 45%);
+  --chart-3: hsl(33 95% 50%);
+  --chart-4: hsl(14 89% 55%);
+  --chart-5: hsl(262 85% 50%);
+
+  /* Sidebar */
+  --sidebar: hsl(0 0% 100%);
+  --sidebar-foreground: hsl(220 25% 10%);
+  --sidebar-primary: hsl(227 90% 30%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(227 90% 95%);
+  --sidebar-accent-foreground: hsl(227 90% 30%);
+  --sidebar-border: hsl(220 15% 90%);
+  --sidebar-ring: hsl(227 90% 45%);
+
   --radius: 0.625rem;
 }
 
 .dark {
-  /* Dark Mode: Professional, eye-friendly for long hours */
-  /* Primary: Bright Blue for better contrast */
-  --primary: 220 95% 65%;
-  --primary-foreground: 220 20% 10%;
-  
+  /* Primary: Bright Blue for contrast */
+  --primary: hsl(220 95% 65%);
+  --primary-foreground: hsl(220 20% 10%);
+
   /* Accent: Bright Emerald */
-  --accent: 150 75% 55%;
-  --accent-foreground: 0 0% 8%;
-  
-  /* Neutrals: Dark backgrounds */
-  --background: 220 25% 10%;
-  --foreground: 0 0% 95%;
-  --card: 220 20% 15%;
-  --card-foreground: 0 0% 95%;
-  --popover: 220 20% 15%;
-  --popover-foreground: 0 0% 95%;
-  
-  /* Secondary: Warm orange stays visible */
-  --secondary: 33 95% 55%;
-  --secondary-foreground: 220 20% 10%;
-  
-  /* Muted colors */
-  --muted: 220 20% 35%;
-  --muted-foreground: 0 0% 70%;
-  
-  /* UI elements */
-  --destructive: 0 84% 65%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 220 20% 28%;
-  --input: 220 20% 20%;
-  --ring: 220 95% 60%;
-  
-  /* Chart colors adjusted for dark backgrounds */
-  --chart-1: 220 95% 65%;
-  --chart-2: 150 75% 55%;
-  --chart-3: 33 95% 60%;
-  --chart-4: 14 89% 60%;
-  --chart-5: 262 85% 60%;
-  
-  /* Sidebar theming for dark */
-  --sidebar: 220 20% 12%;
-  --sidebar-foreground: 0 0% 95%;
-  --sidebar-primary: 220 95% 65%;
-  --sidebar-primary-foreground: 220 20% 10%;
-  --sidebar-accent: 150 75% 55%;
-  --sidebar-accent-foreground: 0 0% 8%;
-  --sidebar-border: 220 20% 28%;
-  --sidebar-ring: 220 95% 60%;
+  --accent: hsl(150 75% 55%);
+  --accent-foreground: hsl(0 0% 8%);
+
+  /* Dark backgrounds */
+  --background: hsl(222 47% 8%);
+  --foreground: hsl(0 0% 95%);
+  --card: hsl(222 40% 12%);
+  --card-foreground: hsl(0 0% 95%);
+  --popover: hsl(222 40% 12%);
+  --popover-foreground: hsl(0 0% 95%);
+
+  /* Secondary */
+  --secondary: hsl(33 95% 55%);
+  --secondary-foreground: hsl(220 20% 10%);
+
+  /* Muted */
+  --muted: hsl(222 30% 20%);
+  --muted-foreground: hsl(0 0% 65%);
+
+  /* UI */
+  --destructive: hsl(0 84% 65%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(222 25% 22%);
+  --input: hsl(222 25% 18%);
+  --ring: hsl(220 95% 60%);
+
+  /* Success / Warning / Info */
+  --success: hsl(150 75% 55%);
+  --success-foreground: hsl(0 0% 8%);
+  --warning: hsl(38 95% 60%);
+  --warning-foreground: hsl(38 95% 10%);
+  --info: hsl(210 95% 65%);
+  --info-foreground: hsl(0 0% 100%);
+
+  /* Chart */
+  --chart-1: hsl(220 95% 65%);
+  --chart-2: hsl(150 75% 55%);
+  --chart-3: hsl(33 95% 60%);
+  --chart-4: hsl(14 89% 60%);
+  --chart-5: hsl(262 85% 60%);
+
+  /* Sidebar */
+  --sidebar: hsl(222 40% 10%);
+  --sidebar-foreground: hsl(0 0% 95%);
+  --sidebar-primary: hsl(220 95% 65%);
+  --sidebar-primary-foreground: hsl(220 20% 10%);
+  --sidebar-accent: hsl(220 95% 15%);
+  --sidebar-accent-foreground: hsl(220 95% 80%);
+  --sidebar-border: hsl(222 25% 22%);
+  --sidebar-ring: hsl(220 95% 60%);
 }
 
 @theme inline {
@@ -152,96 +166,405 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
 
+/* ═══════════════════════════════════════════════════════
+   PREMIUM ANIMATIONS & KEYFRAMES
+   ═══════════════════════════════════════════════════════ */
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes slide-up-fade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes border-glow {
+
+  0%,
+  100% {
+    border-color: hsl(227 90% 45% / 0.3);
+  }
+
+  50% {
+    border-color: hsl(227 90% 45% / 0.7);
+  }
+}
+
+@keyframes count-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   PREMIUM UTILITY CLASSES
+   ═══════════════════════════════════════════════════════ */
+
+@layer utilities {
+
+  /* Gradient text */
+  .text-gradient-primary {
+    background: linear-gradient(135deg, hsl(227 90% 45%), hsl(262 85% 50%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-accent {
+    background: linear-gradient(135deg, hsl(150 65% 40%), hsl(180 65% 35%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glass effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .dark .glass {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Hover lift with shadow */
+  .hover-lift {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.12), 0 4px 12px -4px rgba(0, 0, 0, 0.08);
+  }
+
+  .dark .hover-lift:hover {
+    box-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.4), 0 4px 12px -4px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Shimmer loader */
+  .shimmer-bg {
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Floating animation */
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  /* Blob animation */
+  .animate-blob {
+    animation: blob 7s infinite;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+
+  /* Gradient shift for buttons */
+  .gradient-shift {
+    background-size: 200% 200%;
+    animation: gradient-shift 3s ease infinite;
+  }
+
+  /* Slide up fade */
+  .animate-slide-up {
+    animation: slide-up-fade 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Scale in */
+  .animate-scale-in {
+    animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Count up animation */
+  .animate-count-up {
+    animation: count-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Focus glow ring */
+  .focus-glow:focus-within {
+    box-shadow: 0 0 0 3px hsl(227 90% 45% / 0.15), 0 0 12px hsl(227 90% 45% / 0.1);
+  }
+
+  .dark .focus-glow:focus-within {
+    box-shadow: 0 0 0 3px hsl(220 95% 65% / 0.2), 0 0 12px hsl(220 95% 65% / 0.15);
+  }
+
+  /* Gradient borders */
+  .border-gradient {
+    border-image: linear-gradient(135deg, hsl(227 90% 45%), hsl(150 65% 40%)) 1;
+  }
+
+  /* Pulse glow */
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   COMPONENT STYLES OVERRIDES
+   ═══════════════════════════════════════════════════════ */
+
 @layer components {
-  /* Fix Dialog z-index to prevent overlapping with other elements */
+
+  /* ─── Scrollbar Styling ─── */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--muted-foreground) 20%, transparent);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--muted-foreground) 35%, transparent);
+  }
+
+  /* ─── Dialog z-index fixes ─── */
   [data-state="open"][role="dialog"] {
     z-index: 9999 !important;
   }
-  
-  [data-state="open"][role="dialog"] > div {
+
+  [data-state="open"][role="dialog"]>div {
     z-index: 9999 !important;
   }
-  
-  /* Fix Dialog backdrop */
+
   [data-state="open"][data-portal] {
     z-index: 9998 !important;
   }
-  
-  /* More specific Dialog content targeting */
+
   .fixed.inset-0.z-50 {
     z-index: 9999 !important;
   }
-  
-  .fixed.inset-0.z-50 > div {
-    z-index: 9999 !important;
-  }
-  
-  /* Ensure Dialog content is above backdrop */
-  .bg-background {
+
+  .fixed.inset-0.z-50>div {
     z-index: 9999 !important;
   }
 
-  /* Ensure Select dropdown appears above Dialog modals */
-  [data-slot="select-content"] {
-    z-index: 10010 !important;
-    background-color: white !important;
-  }
-
-  /* Ensure Select portal renders above Dialog */
-  [data-radix-select-content] {
-    z-index: 10010 !important;
-    background-color: white !important;
-  }
-
-  /* Radix Select Content */
+  /* ─── Select Dropdown ─── */
+  [data-slot="select-content"],
+  [data-radix-select-content],
   [role="listbox"] {
     z-index: 10010 !important;
-    background-color: white !important;
   }
 
-  /* Ensure SelectItem text is dark and readable */
   [data-slot="select-item"] {
-    color: rgb(17, 24, 39) !important; /* gray-900 */
+    color: var(--foreground) !important;
+    transition: all 0.15s ease;
   }
 
-  [data-slot="select-item"]:hover {
-    background-color: rgb(243, 244, 246) !important; /* gray-100 */
+  [data-slot="select-item"]:hover,
+  [data-slot="select-item"][data-highlighted] {
+    background: linear-gradient(135deg, hsl(227 90% 45% / 0.08), hsl(262 85% 50% / 0.06)) !important;
+    color: hsl(227 90% 35%) !important;
   }
 
-  /* Ensure button text is visible - default buttons */
-  [data-slot="button"]:not(:disabled):not([variant="ghost"]):not([variant="outline"]):not([variant="secondary"]):not([variant="link"]) {
+  .dark [data-slot="select-item"]:hover,
+  .dark [data-slot="select-item"][data-highlighted] {
+    background: linear-gradient(135deg, hsl(220 95% 65% / 0.12), hsl(262 85% 60% / 0.08)) !important;
+    color: hsl(220 95% 80%) !important;
+  }
+
+  /* ─── Premium Button Overrides ─── */
+  [data-slot="button"] {
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    position: relative;
+    overflow: hidden;
+  }
+
+  [data-slot="button"]:not(:disabled):active {
+    transform: scale(0.97);
+  }
+
+  /* Default buttons: gradient blue */
+  [data-slot="button"]:not(:disabled):not([data-variant="ghost"]):not([data-variant="outline"]):not([data-variant="secondary"]):not([data-variant="link"]):not([data-variant="destructive"]) {
+    background: linear-gradient(135deg, hsl(227 90% 38%), hsl(240 80% 45%)) !important;
     color: white !important;
-    background-color: hsl(var(--primary)) !important;
+    box-shadow: 0 2px 8px hsl(227 90% 40% / 0.3), 0 1px 3px hsl(227 90% 40% / 0.15);
   }
 
-  [data-slot="button"]:not(:disabled):not([variant="ghost"]):not([variant="outline"]):not([variant="secondary"]):not([variant="link"]):hover {
-    background-color: hsl(var(--primary) / 0.9) !important;
+  [data-slot="button"]:not(:disabled):not([data-variant="ghost"]):not([data-variant="outline"]):not([data-variant="secondary"]):not([data-variant="link"]):not([data-variant="destructive"]):hover {
+    background: linear-gradient(135deg, hsl(227 90% 35%), hsl(240 80% 42%)) !important;
+    box-shadow: 0 4px 16px hsl(227 90% 40% / 0.4), 0 2px 6px hsl(227 90% 40% / 0.2);
+    transform: translateY(-1px);
   }
 
-  /* Ensure ghost buttons are visible */
-  [data-slot="button"][variant="ghost"] {
-    color: rgb(55, 65, 81) !important; /* gray-700 */
+  .dark [data-slot="button"]:not(:disabled):not([data-variant="ghost"]):not([data-variant="outline"]):not([data-variant="secondary"]):not([data-variant="link"]):not([data-variant="destructive"]) {
+    background: linear-gradient(135deg, hsl(220 95% 55%), hsl(240 85% 60%)) !important;
+    box-shadow: 0 2px 8px hsl(220 95% 55% / 0.3);
   }
 
-  [data-slot="button"][variant="ghost"]:hover {
-    color: rgb(17, 24, 39) !important; /* gray-900 */
-    background-color: rgb(243, 244, 246) !important; /* gray-100 */
+  .dark [data-slot="button"]:not(:disabled):not([data-variant="ghost"]):not([data-variant="outline"]):not([data-variant="secondary"]):not([data-variant="link"]):not([data-variant="destructive"]):hover {
+    background: linear-gradient(135deg, hsl(220 95% 50%), hsl(240 85% 55%)) !important;
+    box-shadow: 0 4px 16px hsl(220 95% 55% / 0.4);
   }
 
-  /* Ensure buttons with explicit bg-primary class are visible */
+  /* Ghost buttons */
+  [data-slot="button"][data-variant="ghost"] {
+    color: color-mix(in srgb, var(--foreground) 70%, transparent) !important;
+  }
+
+  [data-slot="button"][data-variant="ghost"]:hover {
+    color: var(--foreground) !important;
+    background: color-mix(in srgb, var(--muted) 80%, transparent) !important;
+  }
+
+  /* Outline buttons */
+  [data-slot="button"][data-variant="outline"]:hover {
+    border-color: hsl(227 90% 45% / 0.4);
+    background: hsl(227 90% 45% / 0.04) !important;
+  }
+
+  .dark [data-slot="button"][data-variant="outline"]:hover {
+    border-color: hsl(220 95% 65% / 0.3);
+    background: hsl(220 95% 65% / 0.06) !important;
+  }
+
+  /* Destructive buttons */
+  [data-slot="button"][data-variant="destructive"] {
+    background: linear-gradient(135deg, hsl(0 84% 55%), hsl(10 80% 50%)) !important;
+    box-shadow: 0 2px 8px hsl(0 84% 55% / 0.25);
+  }
+
+  [data-slot="button"][data-variant="destructive"]:hover {
+    background: linear-gradient(135deg, hsl(0 84% 50%), hsl(10 80% 45%)) !important;
+    box-shadow: 0 4px 16px hsl(0 84% 55% / 0.35);
+  }
+
+  /* Explicit bg-primary buttons */
   button.bg-primary,
   [data-slot="button"].bg-primary {
-    background-color: hsl(var(--primary)) !important;
+    background: linear-gradient(135deg, hsl(227 90% 38%), hsl(240 80% 45%)) !important;
     color: white !important;
+    box-shadow: 0 2px 8px hsl(227 90% 40% / 0.3);
   }
 
   button.bg-primary:hover,
   [data-slot="button"].bg-primary:hover {
-    background-color: hsl(var(--primary) / 0.9) !important;
+    background: linear-gradient(135deg, hsl(227 90% 35%), hsl(240 80% 42%)) !important;
+    box-shadow: 0 4px 16px hsl(227 90% 40% / 0.4);
+  }
+
+  /* bg-blue-600 overrides (landing page) */
+  button.bg-blue-600,
+  [data-slot="button"].bg-blue-600 {
+    background: linear-gradient(135deg, #2563eb, #4f46e5) !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  }
+
+  button.bg-blue-600:hover,
+  [data-slot="button"].bg-blue-600:hover {
+    background: linear-gradient(135deg, #1d4ed8, #4338ca) !important;
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    transform: translateY(-1px);
   }
 }

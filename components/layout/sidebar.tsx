@@ -282,25 +282,29 @@ function NavItemComponent({ item, depth = 0 }: { item: NavItem; depth?: number }
       <li>
         <button
           onClick={() => setExpanded(!expanded)}
-          className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+          className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${isActive
+              ? 'bg-gradient-to-r from-primary/10 to-primary/5 text-primary dark:from-primary/20 dark:to-primary/10 dark:text-primary shadow-sm'
+              : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
             }`}
         >
-          {item.icon}
+          <span className={`transition-colors duration-200 ${isActive ? 'text-primary' : 'text-sidebar-foreground/50 group-hover:text-sidebar-foreground/80'}`}>
+            {item.icon}
+          </span>
           <span className="flex-1 text-left">{item.label}</span>
           {item.badge && (
-            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-bold min-w-[20px] shadow-sm">
               {item.badge}
             </span>
           )}
-          {expanded ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />}
+          <ChevronDown className={`w-4 h-4 opacity-40 transition-transform duration-200 ${expanded ? 'rotate-0' : '-rotate-90'}`} />
         </button>
-        {expanded && (
-          <ul className="ml-4 mt-1 space-y-1 border-l border-sidebar-border pl-3">
+        <div className={`overflow-hidden transition-all duration-300 ease-out ${expanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+          <ul className="ml-4 mt-1 space-y-0.5 border-l-2 border-sidebar-border/50 pl-3 py-1">
             {item.children.map(child => (
               <NavItemComponent key={child.href} item={child} depth={depth + 1} />
             ))}
           </ul>
-        )}
+        </div>
       </li>
     );
   }
@@ -309,13 +313,17 @@ function NavItemComponent({ item, depth = 0 }: { item: NavItem; depth?: number }
     <li>
       <Link
         href={item.href}
-        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${isActive
+            ? 'bg-gradient-to-r from-primary/10 to-primary/5 text-primary dark:from-primary/20 dark:to-primary/10 dark:text-primary shadow-sm'
+            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
           }`}
       >
-        {item.icon}
+        <span className={`transition-colors duration-200 ${isActive ? 'text-primary' : 'text-sidebar-foreground/50 group-hover:text-sidebar-foreground/80'}`}>
+          {item.icon}
+        </span>
         <span className="flex-1">{item.label}</span>
         {item.badge && (
-          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-bold min-w-[20px] shadow-sm">
             {item.badge}
           </span>
         )}
@@ -338,42 +346,48 @@ export function Sidebar() {
     <>
       {/* Mobile toggle */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
-        <Button variant="ghost" size="icon" onClick={() => setOpen(!open)}>
+        <Button variant="ghost" size="icon" onClick={() => setOpen(!open)} className="bg-card/80 backdrop-blur-sm shadow-lg border border-border/40">
           {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </Button>
       </div>
 
       {open && (
-        <div className="fixed inset-0 bg-black/50 lg:hidden z-30" onClick={() => setOpen(false)} />
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm lg:hidden z-30 transition-opacity" onClick={() => setOpen(false)} />
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-screen w-64 bg-sidebar border-r border-sidebar-border z-40 transform transition-transform duration-300 lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed left-0 top-0 h-screen w-64 bg-sidebar border-r border-sidebar-border/60 z-40 transform transition-all duration-300 ease-out lg:translate-x-0 ${open ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
           }`}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-4 border-b border-sidebar-border flex-shrink-0">
-            <Link href={user?.role === UserRole.PLATFORM_ADMIN ? '/admin/tenants' : '/dashboard'} className="flex items-center gap-2 font-bold text-lg">
-              <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-                <span className="text-sidebar-primary-foreground font-bold">SA</span>
+          <div className="p-4 border-b border-sidebar-border/60 flex-shrink-0">
+            <Link href={user?.role === UserRole.PLATFORM_ADMIN ? '/admin/tenants' : '/dashboard'} className="flex items-center gap-3 font-bold text-lg group">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-[0_4px_14px_rgba(59,130,246,0.3)] group-hover:shadow-[0_6px_20px_rgba(59,130,246,0.45)] transition-all duration-300">
+                <span className="text-white font-bold text-sm">SA</span>
               </div>
-              <span className="text-sidebar-foreground">Sahayog AI</span>
+              <span className="text-sidebar-foreground tracking-tight">Sahayog <span className="text-primary font-bold">AI</span></span>
             </Link>
           </div>
 
           {/* User info */}
           {user && (
-            <div className="p-4 border-b border-sidebar-border flex-shrink-0">
-              <p className="text-xs text-sidebar-accent-foreground font-semibold mb-1">Logged in as</p>
-              <p className="text-sm font-medium text-sidebar-foreground truncate">{user.name}</p>
-              <p className="text-xs text-muted-foreground">{user.role}</p>
+            <div className="px-4 py-3 border-b border-sidebar-border/60 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                  <span className="text-xs font-bold text-primary">{user.name.charAt(0).toUpperCase()}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">{user.name}</p>
+                  <p className="text-[11px] text-muted-foreground font-medium">{user.role.replace(/_/g, ' ')}</p>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Navigation */}
           <nav className="flex-1 overflow-y-auto p-3" onClick={() => setOpen(false)}>
-            <ul className="space-y-1">
+            <ul className="space-y-0.5">
               {navigationItems.map(item => (
                 <NavItemComponent key={item.href} item={item} />
               ))}
@@ -381,8 +395,12 @@ export function Sidebar() {
           </nav>
 
           {/* Logout */}
-          <div className="p-4 border-t border-sidebar-border flex-shrink-0">
-            <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
+          <div className="p-3 border-t border-sidebar-border/60 flex-shrink-0">
+            <Button
+              variant="ghost"
+              className="w-full justify-start rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all duration-200"
+              onClick={handleLogout}
+            >
               <LogOut className="w-5 h-5 mr-2" />
               Logout
             </Button>

@@ -210,13 +210,13 @@ export default function UsersPage() {
                                         <TableCell><Badge className={u.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>{u.status}</Badge></TableCell>
                                         <TableCell>
                                             <div className="flex gap-1">
-                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-gray-700 hover:text-gray-900 hover:bg-gray-100" title="Edit Role" onClick={() => { setEditUser(u); setEditRole(u.role); }}>
+                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" title="Edit Role" onClick={() => { setEditUser(u); setEditRole(u.role); }}>
                                                     <Edit className="w-3.5 h-3.5" />
                                                 </Button>
-                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-gray-700 hover:text-gray-900 hover:bg-gray-100" title="Reset Password" onClick={() => { setResetUser(u); setNewPassword(''); }}>
+                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" title="Reset Password" onClick={() => { setResetUser(u); setNewPassword(''); }}>
                                                     <Key className="w-3.5 h-3.5" />
                                                 </Button>
-                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-gray-700 hover:text-gray-900 hover:bg-gray-100" title={u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} onClick={() => handleToggleStatus(u)}>
+                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" title={u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} onClick={() => handleToggleStatus(u)}>
                                                     <Power className={`w-3.5 h-3.5 ${u.status === 'ACTIVE' ? 'text-red-500' : 'text-green-500'}`} />
                                                 </Button>
                                             </div>
@@ -234,7 +234,7 @@ export default function UsersPage() {
 
             {/* Create User Modal */}
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="max-w-md bg-white">
+                <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle>Add New User</DialogTitle>
                     </DialogHeader>
@@ -279,7 +279,7 @@ export default function UsersPage() {
                     setEditRole('');
                 }
             }}>
-                <DialogContent className="max-w-md bg-white">
+                <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle>Edit Role — {editUser?.name}</DialogTitle>
                     </DialogHeader>
@@ -287,7 +287,7 @@ export default function UsersPage() {
                         <div className="space-y-4 pt-2">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Email</label>
-                                <Input value={editUser.email} disabled className="bg-gray-50" />
+                                <Input value={editUser.email} disabled className="bg-muted/50" />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Role</label>
@@ -314,7 +314,7 @@ export default function UsersPage() {
 
             {/* Reset Password Modal */}
             <Dialog open={!!resetUser} onOpenChange={v => !v && setResetUser(null)}>
-                <DialogContent className="max-w-md bg-white">
+                <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle>Reset Password — {resetUser?.name}</DialogTitle>
                     </DialogHeader>

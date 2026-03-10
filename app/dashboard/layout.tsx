@@ -54,7 +54,7 @@ export default function DashboardLayout({
         {/* Main content */}
         <div className="lg:ml-64">
           {/* Header */}
-          <header className="sticky top-0 bg-background border-b border-border z-30">
+          <header className="sticky top-0 bg-background/80 backdrop-blur-xl border-b border-border/40 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
             <div className="flex items-center justify-between h-16 px-4 sm:px-6">
               <div className="flex-1" />
 
@@ -64,12 +64,12 @@ export default function DashboardLayout({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="hidden sm:flex items-center gap-2 text-muted-foreground text-sm w-48"
+                  className="hidden sm:flex items-center gap-2 text-muted-foreground text-sm w-52 rounded-xl border-border/60 bg-muted/30 hover:bg-muted/50"
                   onClick={() => setSearchOpen(true)}
                 >
                   <Search className="w-4 h-4" />
                   <span className="flex-1 text-left">Search...</span>
-                  <kbd className="font-mono text-[10px] bg-muted px-1 rounded border border-border">⌘K</kbd>
+                  <kbd className="font-mono text-[10px] bg-background px-1.5 py-0.5 rounded-md border border-border/60 text-muted-foreground/70">⌘K</kbd>
                 </Button>
 
                 {/* Notifications */}
@@ -81,27 +81,27 @@ export default function DashboardLayout({
                 {/* User menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="gap-2">
-                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                        <span className="text-xs font-bold text-primary-foreground">
+                    <Button variant="ghost" className="gap-2 rounded-xl hover:bg-muted/50">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-sm">
+                        <span className="text-xs font-bold text-white">
                           {user?.name.charAt(0).toUpperCase()}
                         </span>
                       </div>
                       <span className="hidden sm:inline text-sm font-medium">{user?.name}</span>
-                      <ChevronDown className="w-4 h-4 opacity-50" />
+                      <ChevronDown className="w-4 h-4 opacity-40" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem disabled>
+                  <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                    <DropdownMenuItem disabled className="py-3">
                       <div>
-                        <p className="text-sm font-medium">{user?.name}</p>
-                        <p className="text-xs text-muted-foreground">{user?.role}</p>
+                        <p className="text-sm font-semibold">{user?.name}</p>
+                        <p className="text-xs text-muted-foreground">{user?.role?.replace(/_/g, ' ')}</p>
                       </div>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
                       <a href="/dashboard/settings/users">Settings</a>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleLogout}>
+                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer rounded-lg text-destructive focus:text-destructive">
                       Logout
                     </DropdownMenuItem>
                   </DropdownMenuContent>
