@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
-import { ArrowLeft, FileText, Download, Loader2, Award } from 'lucide-react';
+import { ArrowLeft, FileText, Download, Loader2, Award, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { MemberPortalNav } from '@/components/member-portal-nav';
+import { motion } from 'framer-motion';
 
 export default function ShareCertificatePage() {
   const router = useRouter();
@@ -119,7 +121,10 @@ export default function ShareCertificatePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground animate-pulse">Loading certificate...</p>
+        </div>
       </div>
     );
   }
@@ -133,141 +138,178 @@ export default function ShareCertificatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/5 p-4 pb-20 pt-8">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 pb-24 relative">
+      <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
+      <div className="absolute bottom-40 left-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3 pointer-events-none" />
+
+      <div className="max-w-4xl mx-auto p-4 pt-8 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between"
+        >
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="hover:bg-muted/50 rounded-xl">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">Share Certificate</h1>
-              <p className="text-muted-foreground text-sm">Member #{certificateData.member.memberNumber}</p>
+              <h1 className="text-2xl font-bold text-gradient-primary">Share Certificate</h1>
+              <p className="text-muted-foreground text-sm mt-0.5">Member #{certificateData.member.memberNumber}</p>
             </div>
           </div>
-          <Button onClick={handleDownload} className="gap-2">
-            <Download className="w-4 h-4" />
-            Download Certificate
-          </Button>
-        </div>
+          <motion.div whileTap={{ scale: 0.97 }}>
+            <Button onClick={handleDownload} className="gap-2 shadow-lg shadow-primary/20">
+              <Download className="w-4 h-4" />
+              Download Certificate
+            </Button>
+          </motion.div>
+        </motion.div>
 
         {/* Certificate Card */}
-        <Card className="border-2 border-primary/20">
-          <CardHeader className="bg-gradient-to-r from-primary/10 to-accent/10">
-            <div className="text-center">
-              <Award className="w-12 h-12 mx-auto mb-4 text-primary" />
-              <CardTitle className="text-2xl">SHARE CERTIFICATE</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {/* Member Info */}
-            <div className="space-y-4 mb-8">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Member Number</p>
-                  <p className="font-bold text-lg">{certificateData.member.memberNumber}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Name</p>
-                  <p className="font-bold text-lg">
-                    {certificateData.member.firstName} {certificateData.member.lastName}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Date of Birth</p>
-                  <p className="font-medium">
-                    {certificateData.member.dateOfBirth
-                      ? formatDate(new Date(certificateData.member.dateOfBirth))
-                      : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Phone</p>
-                  <p className="font-medium">{certificateData.member.phone || 'N/A'}</p>
-                </div>
-              </div>
-              {certificateData.member.address && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Address</p>
-                  <p className="font-medium">{certificateData.member.address}</p>
-                </div>
-              )}
-            </div>
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="glass border-white/20 dark:border-white/10 shadow-2xl overflow-hidden relative">
+            {/* Golden glow border effect */}
+            <div className="absolute inset-0 rounded-lg ring-1 ring-amber-300/30 dark:ring-amber-600/20 pointer-events-none" />
 
-            {/* Share Summary */}
-            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 p-6 rounded-lg border border-emerald-200 dark:border-emerald-800 mb-8">
-              <div className="grid grid-cols-2 gap-6 text-center">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Total Shares</p>
-                  <p className="text-4xl font-bold text-emerald-700">{certificateData.totalShares}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Total Share Value</p>
-                  <p className="text-4xl font-bold text-emerald-700">
-                    {formatCurrency(certificateData.totalShareValue, true)}
-                  </p>
-                </div>
+            <CardHeader className="bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 border-b border-border/30">
+              <div className="text-center py-4">
+                <motion.div
+                  animate={{ y: [0, -5, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                  className="relative inline-block"
+                >
+                  <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-amber-500/20">
+                    <Award className="w-8 h-8 text-white" />
+                  </div>
+                  <Sparkles className="absolute -top-2 -right-2 w-5 h-5 text-amber-500 animate-pulse" />
+                </motion.div>
+                <CardTitle className="text-2xl mt-4 text-gradient-primary">SHARE CERTIFICATE</CardTitle>
               </div>
-            </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {/* Member Info */}
+              <div className="space-y-4 mb-8">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-muted/20 p-4 rounded-xl border border-border/30">
+                    <p className="text-xs text-muted-foreground mb-1 font-medium">Member Number</p>
+                    <p className="font-bold text-lg">{certificateData.member.memberNumber}</p>
+                  </div>
+                  <div className="bg-muted/20 p-4 rounded-xl border border-border/30">
+                    <p className="text-xs text-muted-foreground mb-1 font-medium">Name</p>
+                    <p className="font-bold text-lg">
+                      {certificateData.member.firstName} {certificateData.member.lastName}
+                    </p>
+                  </div>
+                  <div className="bg-muted/20 p-4 rounded-xl border border-border/30">
+                    <p className="text-xs text-muted-foreground mb-1 font-medium">Date of Birth</p>
+                    <p className="font-medium">
+                      {certificateData.member.dateOfBirth
+                        ? formatDate(new Date(certificateData.member.dateOfBirth))
+                        : 'N/A'}
+                    </p>
+                  </div>
+                  <div className="bg-muted/20 p-4 rounded-xl border border-border/30">
+                    <p className="text-xs text-muted-foreground mb-1 font-medium">Phone</p>
+                    <p className="font-medium">{certificateData.member.phone || 'N/A'}</p>
+                  </div>
+                </div>
+                {certificateData.member.address && (
+                  <div className="bg-muted/20 p-4 rounded-xl border border-border/30">
+                    <p className="text-xs text-muted-foreground mb-1 font-medium">Address</p>
+                    <p className="font-medium">{certificateData.member.address}</p>
+                  </div>
+                )}
+              </div>
 
-            {/* Share Ledger */}
-            <div>
-              <h3 className="font-semibold mb-4">Share Transaction History</h3>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Transaction Type</TableHead>
-                      <TableHead className="text-right">Shares</TableHead>
-                      <TableHead className="text-right">Face Value</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Remarks</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {certificateData.shareLedger.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                          No share transactions found
-                        </TableCell>
+              {/* Share Summary */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 }}
+                className="glass p-6 rounded-2xl border border-emerald-200/30 dark:border-emerald-800/20 mb-8 relative overflow-hidden"
+              >
+                <div className="absolute -right-10 -top-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="grid grid-cols-2 gap-6 text-center relative z-10">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2 font-medium">Total Shares</p>
+                    <p className="text-4xl font-bold text-gradient-accent">{certificateData.totalShares}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2 font-medium">Total Share Value</p>
+                    <p className="text-4xl font-bold text-gradient-accent">
+                      {formatCurrency(certificateData.totalShareValue, true)}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Share Ledger */}
+              <div>
+                <h3 className="font-bold mb-4 flex items-center gap-2">
+                  <span className="w-1 h-5 bg-gradient-to-b from-primary to-primary/50 rounded-full" />
+                  Share Transaction History
+                </h3>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/20">
+                        <TableHead>Date</TableHead>
+                        <TableHead>Transaction Type</TableHead>
+                        <TableHead className="text-right">Shares</TableHead>
+                        <TableHead className="text-right">Face Value</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Remarks</TableHead>
                       </TableRow>
-                    ) : (
-                      certificateData.shareLedger.map((tx: any) => (
-                        <TableRow key={tx.id}>
-                          <TableCell>{formatDate(new Date(tx.date))}</TableCell>
-                          <TableCell>
-                            <Badge
-                              className={
-                                tx.transactionType === 'purchase'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : tx.transactionType === 'transfer'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-amber-100 text-amber-800'
-                              }
-                            >
-                              {tx.transactionType.toUpperCase()}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">{tx.shares}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(tx.faceValue, true)}</TableCell>
-                          <TableCell className="text-right font-semibold">
-                            {formatCurrency(tx.amount, true)}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {tx.remarks || '-'}
+                    </TableHeader>
+                    <TableBody>
+                      {certificateData.shareLedger.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
+                            No share transactions found
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                      ) : (
+                        certificateData.shareLedger.map((tx: any) => (
+                          <TableRow key={tx.id} className="hover:bg-muted/10 transition-colors">
+                            <TableCell>{formatDate(new Date(tx.date))}</TableCell>
+                            <TableCell>
+                              <Badge
+                                className={`shadow-sm ${tx.transactionType === 'purchase'
+                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                    : tx.transactionType === 'transfer'
+                                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                                  }`}
+                              >
+                                {tx.transactionType.toUpperCase()}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">{tx.shares}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(tx.faceValue, true)}</TableCell>
+                            <TableCell className="text-right font-semibold">
+                              {formatCurrency(tx.amount, true)}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {tx.remarks || '-'}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
+
+      <MemberPortalNav />
     </div>
   );
 }
