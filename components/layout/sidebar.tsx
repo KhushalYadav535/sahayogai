@@ -39,6 +39,10 @@ import {
   Hash,
   Clock,
   Lock,
+  Percent,
+  History,
+  Camera,
+  PenTool,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter, usePathname } from 'next/navigation';
@@ -71,6 +75,7 @@ const navigationItems: NavItem[] = [
     children: [
       { label: 'All Members', href: '/dashboard/members', icon: <Users className="w-4 h-4" /> },
       { label: 'Minor Conversion', href: '/dashboard/members/minor-conversion', icon: <UserCheck className="w-4 h-4" /> },
+      { label: 'Photo Approvals', href: '/dashboard/members/photo-approvals', icon: <Camera className="w-4 h-4" />, requiredRoles: [UserRole.SECRETARY, UserRole.SOCIETY_ADMIN, UserRole.PRESIDENT] },
     ],
   },
   {
@@ -108,6 +113,17 @@ const navigationItems: NavItem[] = [
       { label: 'New Deposit', href: '/dashboard/deposits/new', icon: <FileText className="w-4 h-4" />, requiredPermissions: [Permission.DEPOSIT_CREATE] },
       { label: 'Maturity Queue', href: '/dashboard/deposits/maturity', icon: <TrendingUp className="w-4 h-4" /> },
       { label: 'TDS Management', href: '/dashboard/deposits/tds', icon: <Shield className="w-4 h-4" /> },
+    ],
+  },
+  {
+    label: 'Interest Rates',
+    href: '/dashboard/interest-rates',
+    icon: <Percent className="w-5 h-5" />,
+    requiredRoles: [UserRole.ACCOUNTANT, UserRole.SENIOR_ACCOUNTANT, UserRole.SOCIETY_ADMIN, UserRole.PRESIDENT],
+    tenantOnly: true,
+    children: [
+      { label: 'Rate Schemes', href: '/dashboard/interest-rates', icon: <Percent className="w-4 h-4" /> },
+      { label: 'Audit Trail', href: '/dashboard/interest-rates/audit-trail', icon: <History className="w-4 h-4" />, requiredRoles: [UserRole.AUDITOR, UserRole.COMPLIANCE_OFFICER, UserRole.SOCIETY_ADMIN, UserRole.PRESIDENT] },
     ],
   },
   {

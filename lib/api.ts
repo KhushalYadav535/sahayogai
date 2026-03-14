@@ -46,7 +46,7 @@ export function setMemberToken(token: string | null) {
   }
 }
 
-function getToken(): string | null {
+export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return (window as any).__sahayog_token || localStorage.getItem("sahayog-token");
 }
@@ -1729,5 +1729,72 @@ export const integrationsApi = {
       method: "POST",
       body: JSON.stringify(data),
       headers: { Authorization: `Bearer ${t || getToken() || ""}` },
+    }),
+};
+
+// Interest Engine (BRD v4.0)
+export const interestApi = {
+  schemes: {
+    list: (token?: string) =>
+      api<{ success: boolean; schemes: any[] }>("/interest/schemes", {
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    get: (id: string, token?: string) =>
+      api<{ success: boolean; scheme: any }>(`/interest/schemes/${id}`, {
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    create: (data: any, token?: string) =>
+      api<{ success: boolean; scheme: any }>("/interest/schemes", {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    submit: (id: string, token?: string) =>
+      api<{ success: boolean; scheme: any }>(`/interest/schemes/${id}/submit`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    approve: (id: string, token?: string) =>
+      api<{ success: boolean; scheme: any }>(`/interest/schemes/${id}/approve`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    reject: (id: string, data: { rejectionReason: string }, token?: string) =>
+      api<{ success: boolean; scheme: any }>(`/interest/schemes/${id}/reject`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    pending: (token?: string) =>
+      api<{ success: boolean; schemes: any[] }>("/interest/schemes/pending", {
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    audit: (params?: { schemeCode?: string; changeType?: string; fromDate?: string; toDate?: string }, token?: string) => {
+      const q = new URLSearchParams();
+      if (params?.schemeCode) q.set("schemeCode", params.schemeCode);
+      if (params?.changeType) q.set("changeType", params.changeType);
+      if (params?.fromDate) q.set("fromDate", params.fromDate);
+      if (params?.toDate) q.set("toDate", params.toDate);
+      return api<{ success: boolean; records: any[] }>(`/interest/schemes/audit?${q}`, {
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      });
+    },
+    exportAudit: (params: { schemeCode?: string; changeType?: string; fromDate?: string; toDate?: string; format: "pdf" | "excel" }, token?: string) => {
+      const q = new URLSearchParams();
+      if (params.schemeCode) q.set("schemeCode", params.schemeCode);
+      if (params.changeType) q.set("changeType", params.changeType);
+      if (params.fromDate) q.set("fromDate", params.fromDate);
+      if (params.toDate) q.set("toDate", params.toDate);
+      q.set("format", params.format);
+      return fetch(`${API_BASE}/interest/schemes/audit/export?${q}`, {
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      });
+    },
+  },
+  simulate: (data: { principal: number; rate?: number; schemeCode?: string; productType: string; tenureDays?: number; tenureMonths?: number; memberAge?: number }, token?: string) =>
+    api<{ success: boolean; interestAmount: number; maturityValue: number; emiSchedule?: any[]; tdsEstimate?: number }>("/interest/simulate", {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Permission } from '@/lib/types/auth';
@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Camera, Upload, X, PenTool } from 'lucide-react';
+import { getToken } from '@/lib/api';
 
 export default function MemberRegistrationPage() {
   const router = useRouter();
@@ -28,6 +30,19 @@ export default function MemberRegistrationPage() {
     category: MemberCategory.REGULAR,
     initialShares: 5,
   });
+  
+  // Photo and signature state
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const signatureInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const photoCanvasRef = useRef<HTMLCanvasElement>(null);
+  const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
 
   if (!hasPermission(Permission.MEMBER_CREATE)) {
     return (
@@ -52,6 +67,162 @@ export default function MemberRegistrationPage() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  // Photo upload handlers
+  const handlePhotoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Error',
+        description: 'Please select an image file',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'Error',
+        description: 'Image size must be less than 5MB',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setShowCamera(true);
+      }
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to access camera',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && photoCanvasRef.current) {
+      const canvas = photoCanvasRef.current;
+      const video = videoRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+            setPhotoFile(file);
+            setPhotoPreview(canvas.toDataURL());
+            setShowCamera(false);
+            if (video.srcObject) {
+              const stream = video.srcObject as MediaStream;
+              stream.getTracks().forEach(track => track.stop());
+            }
+          }
+        }, 'image/jpeg', 0.9);
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+    }
+    setShowCamera(false);
+  };
+
+  // Signature upload handlers
+  const handleSignatureFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Error',
+        description: 'Please select an image file',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setSignatureFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSignaturePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const startSignaturePad = () => {
+    setShowSignaturePad(true);
+    if (signatureCanvasRef.current) {
+      const canvas = signatureCanvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+      }
+    }
+  };
+
+  const handleSignatureDraw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!showSignaturePad) return;
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const ctx = canvas.getContext('2d');
+    
+    if (ctx) {
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
+  };
+
+  const captureSignature = () => {
+    if (signatureCanvasRef.current) {
+      signatureCanvasRef.current.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], 'signature.png', { type: 'image/png' });
+          setSignatureFile(file);
+          setSignaturePreview(signatureCanvasRef.current!.toDataURL());
+          setShowSignaturePad(false);
+        }
+      }, 'image/png');
+    }
+  };
+
+  const clearSignature = () => {
+    if (signatureCanvasRef.current) {
+      const ctx = signatureCanvasRef.current.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, signatureCanvasRef.current.width, signatureCanvasRef.current.height);
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -338,6 +509,178 @@ export default function MemberRegistrationPage() {
                     disabled={isSubmitting}
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Photo Upload */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-lg font-semibold text-foreground">Member Photograph</h3>
+              
+              <div className="space-y-4">
+                {photoPreview ? (
+                  <div className="relative inline-block">
+                    <img
+                      src={photoPreview}
+                      alt="Photo preview"
+                      className="w-32 h-32 object-cover rounded-lg border"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-0 right-0"
+                      onClick={() => {
+                        setPhotoPreview(null);
+                        setPhotoFile(null);
+                        if (photoInputRef.current) photoInputRef.current.value = '';
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : showCamera ? (
+                  <div className="space-y-2">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      className="w-full max-w-md rounded-lg border"
+                    />
+                    <div className="flex gap-2">
+                      <Button type="button" onClick={capturePhoto}>
+                        Capture Photo
+                      </Button>
+                      <Button type="button" variant="outline" onClick={stopCamera}>
+                        Cancel
+                      </Button>
+                    </div>
+                    <canvas ref={photoCanvasRef} className="hidden" />
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={isSubmitting}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Photo
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={startCamera}
+                      disabled={isSubmitting}
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      Take Photo
+                    </Button>
+                  </div>
+                )}
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoFileSelect}
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            {/* Signature Upload */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-lg font-semibold text-foreground">Member Signature</h3>
+              
+              <div className="space-y-4">
+                {signaturePreview ? (
+                  <div className="relative inline-block">
+                    <img
+                      src={signaturePreview}
+                      alt="Signature preview"
+                      className="w-64 h-32 object-contain rounded-lg border bg-white"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-0 right-0"
+                      onClick={() => {
+                        setSignaturePreview(null);
+                        setSignatureFile(null);
+                        if (signatureInputRef.current) signatureInputRef.current.value = '';
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : showSignaturePad ? (
+                  <div className="space-y-2">
+                    <canvas
+                      ref={signatureCanvasRef}
+                      width={600}
+                      height={200}
+                      className="border rounded-lg cursor-crosshair bg-white"
+                      onMouseDown={(e) => {
+                        if (signatureCanvasRef.current) {
+                          const rect = signatureCanvasRef.current.getBoundingClientRect();
+                          const ctx = signatureCanvasRef.current.getContext('2d');
+                          if (ctx) {
+                            ctx.beginPath();
+                            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+                          }
+                        }
+                      }}
+                      onMouseMove={handleSignatureDraw}
+                      onMouseUp={() => {
+                        if (signatureCanvasRef.current) {
+                          const ctx = signatureCanvasRef.current.getContext('2d');
+                          if (ctx) {
+                            ctx.beginPath();
+                          }
+                        }
+                      }}
+                    />
+                    <div className="flex gap-2">
+                      <Button type="button" onClick={captureSignature}>
+                        Save Signature
+                      </Button>
+                      <Button type="button" variant="outline" onClick={clearSignature}>
+                        Clear
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setShowSignaturePad(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => signatureInputRef.current?.click()}
+                      disabled={isSubmitting}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Signature
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={startSignaturePad}
+                      disabled={isSubmitting}
+                    >
+                      <PenTool className="h-4 w-4 mr-2" />
+                      Draw Signature
+                    </Button>
+                  </div>
+                )}
+                <input
+                  ref={signatureInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleSignatureFileSelect}
+                  className="hidden"
+                />
               </div>
             </div>
 
