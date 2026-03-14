@@ -774,6 +774,14 @@ export const meApi = {
       body: JSON.stringify(preferences),
       headers: { Authorization: `Bearer ${token || getMemberToken() || ""}` },
     }),
+
+  // INT-011: Interest Simulation
+  simulateInterest: (body: { productType: "SB" | "FDR" | "RD" | "Loan"; principal: number; rate?: number; tenureDays?: number; tenureMonths?: number; compoundingFreq?: "MONTHLY" | "QUARTERLY" | "ANNUALLY" | "SIMPLE"; memberAge?: number }, token?: string) =>
+    api<{ success: boolean; simulation: { totalInterest: number; maturityValue: number; emiSchedule: any[] | null; tdsEstimate: number | null } }>("/interest/simulate", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getMemberToken() || ""}` },
+    }),
 };
 
 // Users (tenant-scoped)

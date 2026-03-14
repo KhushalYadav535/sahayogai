@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Wallet, DollarSign, FileText, Phone, Download, Eye, EyeOff, Loader2, Calendar, ArrowRight, TrendingUp, Sparkles, Bell, ChevronDown } from 'lucide-react'
+import { Wallet, DollarSign, FileText, Phone, Download, Eye, EyeOff, Loader2, Calendar, ArrowRight, TrendingUp, Sparkles, Bell, ChevronDown, Calculator } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
 import { meApi } from '@/lib/api'
 import Link from 'next/link'
@@ -531,8 +531,10 @@ export default function MemberPortalHomePage() {
           <span className="w-1 h-5 bg-gradient-to-b from-accent to-accent/50 rounded-full" />
           More Features
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
+            { icon: Calculator, label: 'EMI Calculator', href: '/member-portal/emi-calculator', color: 'from-blue-500 to-blue-600' },
+            { icon: TrendingUp, label: 'FDR Simulator', href: '/member-portal/fdr-simulator', color: 'from-purple-500 to-purple-600' },
             { icon: Calendar, label: 'FDR Maturity', href: '/member-portal/deposits/maturity', color: 'from-teal-500 to-teal-600' },
             { icon: FileText, label: 'Share Certificate', href: '/member-portal/shares/certificate', color: 'from-indigo-500 to-indigo-600' },
             { icon: Bell, label: 'Notifications', href: '/member-portal/notifications', color: 'from-rose-500 to-rose-600' },
