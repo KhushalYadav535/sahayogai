@@ -332,7 +332,7 @@ export default function EditLoanProductPage({ params }: { params: Promise<{ id: 
                       <SelectValue placeholder="Not applicable" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Not applicable</SelectItem>
+                      <SelectItem value="none">Not applicable</SelectItem>
                       <SelectItem value="FLAT">Flat Amount</SelectItem>
                       <SelectItem value="PERCENTAGE">Percentage</SelectItem>
                     </SelectContent>

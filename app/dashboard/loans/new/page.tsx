@@ -80,9 +80,10 @@ export default function NewLoanPage() {
   const [monthlyIncome, setMonthlyIncome] = useState(0);
   const [existingLiabilities, setExistingLiabilities] = useState('');
   const [propertyAssetDesc, setPropertyAssetDesc] = useState('');
-  // Derived CoA fields
+  // Derived CoA fields - get selected product details once
+  const selectedProductDetails = loanProducts.find(p => p.id === selectedProductId);
   const goldLtv = goldValue > 0 ? ((amount / goldValue) * 100).toFixed(1) : null;
-  const isGoldLoan = selectedProduct === 'GOLD_LOAN' || loanSubType === 'gold';
+  const isGoldLoan = selectedProductDetails?.category === 'GOLD' || loanSubType === 'gold';
   const isMicrofinance = loanSubType === 'micro' || loanSubType === 'shg';
   const maxGoldLoan = goldValue > 0 ? goldValue * 0.75 : null;
 
@@ -106,7 +107,16 @@ export default function NewLoanPage() {
   const [appId] = useState('LN-APPL-' + Date.now().toString().slice(-6));
 
   const emi = calcEMI(amount, rate, tenure);
-  const productDocs = DOCS[selectedProduct as keyof typeof DOCS] || [];
+  // Determine document requirements based on product category or use default
+  const getProductDocs = () => {
+    if (!selectedProductDetails) return [];
+    const category = selectedProductDetails.category;
+    if (category === 'GOLD') return DOCS.GOLD_LOAN || [];
+    if (category === 'HOUSING') return DOCS.LONG_TERM || [];
+    if (category === 'PERSONAL') return DOCS.SHORT_TERM || [];
+    return ['Income Proof', 'Passport Photo', 'Bank Statement']; // Default
+  };
+  const productDocs = getProductDocs();
   const allDocsUploaded = productDocs.every(d => uploadedDocs[d]);
 
   useEffect(() => {
@@ -312,16 +322,31 @@ export default function NewLoanPage() {
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Loan Product</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {LOAN_PRODUCTS.map(p => (
-                    <button key={p.id} onClick={() => setSelectedProduct(p.id)} className={`p-4 rounded-lg border text-left transition-all ${selectedProduct === p.id ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50'}`}>
-                      <div className="text-2xl mb-2">{p.icon}</div>
-                      <p className="font-semibold text-sm">{p.label}</p>
-                      <p className="text-xs text-muted-foreground">{p.desc}</p>
-                      <p className="text-xs text-primary mt-1">{p.rateRange} p.a.</p>
-                    </button>
-                  ))}
-                </div>
+                {loanProducts.length === 0 ? (
+                  <div className="text-sm text-muted-foreground p-4 border rounded-lg">
+                    No active loan products available. Please contact administrator.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {loanProducts.map(p => (
+                      <button 
+                        key={p.id} 
+                        onClick={() => {
+                          setSelectedProductId(p.id);
+                          setSelectedProduct(p);
+                        }} 
+                        className={`p-4 rounded-lg border text-left transition-all ${selectedProductId === p.id ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-primary/50'}`}
+                      >
+                        <div className="text-2xl mb-2">{categoryColors[p.category] ? '📋' : '💰'}</div>
+                        <p className="font-semibold text-sm">{p.productName}</p>
+                        <p className="text-xs text-muted-foreground">{p.description || p.category}</p>
+                        <p className="text-xs text-primary mt-1">
+                          {p.interestScheme?.slabs?.[0]?.rate ? `${p.interestScheme.slabs[0].rate}% p.a.` : 'Rate varies'}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -337,7 +362,14 @@ export default function NewLoanPage() {
               <div>
                 <label className="text-sm font-medium">Requested Amount (₹)</label>
                 <Input className="mt-1 text-xl font-bold" type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} />
-                <p className="text-xs text-muted-foreground mt-1">Max: {formatCurrency(LOAN_PRODUCTS.find(p => p.id === selectedProduct)?.maxAmt ?? 100000, 0)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Max: {formatCurrency(
+                    loanProducts.find(p => p.id === selectedProductId)?.maxLoanAmount ?? 
+                    loanProducts.find(p => p.id === selectedProductId)?.interestScheme?.slabs?.[0]?.toAmount ?? 
+                    100000, 
+                    0
+                  )}
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium">Purpose</label>

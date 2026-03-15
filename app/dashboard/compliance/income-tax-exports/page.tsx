@@ -122,7 +122,7 @@ export default function IncomeTaxExportsPage() {
                   <SelectValue placeholder="All Members" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Members</SelectItem>
+                  <SelectItem value="all">All Members</SelectItem>
                   {members.map((member) => (
                     <SelectItem key={member.id} value={member.id}>
                       {member.memberNumber} - {member.firstName} {member.lastName}

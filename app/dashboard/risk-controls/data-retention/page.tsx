@@ -137,7 +137,7 @@ export default function DataRetentionPage() {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   <SelectItem value="TRANSACTION">Transaction</SelectItem>
                   <SelectItem value="AUDIT_LOG">Audit Log</SelectItem>
                   <SelectItem value="KYC_AML">KYC/AML</SelectItem>
@@ -151,7 +151,7 @@ export default function DataRetentionPage() {
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="ACTIVE">Active</SelectItem>
                   <SelectItem value="ARCHIVED">Archived</SelectItem>
                   <SelectItem value="PURGED">Purged</SelectItem>
