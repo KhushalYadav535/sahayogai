@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AlertCircle, Check, X, ArrowUp, Loader2 } from 'lucide-react'
+import { AlertCircle, Check, X, ArrowUp, Loader2, GitCompare } from 'lucide-react'
+import Link from 'next/link'
 import { ApprovalItem, ApprovalStatus } from '@/lib/types/approval'
 import { StatusBadge } from '@/components/common/status-badge'
 import { formatCurrency, formatTimeAgo } from '@/lib/utils/format'
@@ -86,6 +87,18 @@ export default function ApprovalsPage() {
         await approvalsApi.approveVoucher(selectedApproval.id, { comments })
       } else if (selectedApproval.source === 'loan_application') {
         await approvalsApi.approveLoan(selectedApproval.id, { comments })
+      } else if (selectedApproval.source === 'loan_product') {
+        await approvalsApi.approveProduct(selectedApproval.id, {
+          action: 'APPROVE',
+          reasonCode: comments || 'APPROVED_AS_IS',
+          reason: comments,
+        })
+      } else if (selectedApproval.source === 'interest_scheme') {
+        await approvalsApi.approveScheme(selectedApproval.id, {
+          action: 'APPROVE',
+          reasonCode: comments || 'APPROVED_AS_IS',
+          reason: comments,
+        })
       } else {
         throw new Error('Unknown approval source')
       }
@@ -113,6 +126,18 @@ export default function ApprovalsPage() {
         await approvalsApi.rejectVoucher(selectedApproval.id, { reason: rejectionReason })
       } else if (selectedApproval.source === 'loan_application') {
         await approvalsApi.rejectLoan(selectedApproval.id, { reason: rejectionReason })
+      } else if (selectedApproval.source === 'loan_product') {
+        await approvalsApi.approveProduct(selectedApproval.id, {
+          action: 'REJECT',
+          reasonCode: rejectionReason,
+          reason: rejectionReason,
+        })
+      } else if (selectedApproval.source === 'interest_scheme') {
+        await approvalsApi.approveScheme(selectedApproval.id, {
+          action: 'REJECT',
+          reasonCode: rejectionReason,
+          reason: rejectionReason,
+        })
       } else {
         throw new Error('Unknown approval source')
       }
@@ -244,6 +269,17 @@ export default function ApprovalsPage() {
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <div className="flex gap-1">
+                            {(approval.source === 'loan_product' || approval.source === 'interest_scheme') && (
+                              <Link href={`/dashboard/approvals/${approval.id}/compare?source=${approval.source}`}>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2"
+                                >
+                                  Compare
+                                </Button>
+                              </Link>
+                            )}
                             {approval.source && (
                               <>
                                 <Button

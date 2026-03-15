@@ -8,9 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
-import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Bot, TrendingUp, Users, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Bot, TrendingUp, Users, FileText, Loader2, CreditCard, Shield, DollarSign } from 'lucide-react';
 import { loansApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 export default function LoanApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -118,6 +119,30 @@ export default function LoanApplicationDetailPage({ params }: { params: Promise<
           </div>
         </div>
         <div className="flex gap-2">
+          {/* BRD v5.0 Section 4.6.2: Status Flow - APPLIED → UNDER_REVIEW */}
+          {application.status === 'APPLIED' && (
+            <Button 
+              variant="outline" 
+              onClick={async () => {
+                try {
+                  setActionLoading(true);
+                  const response = await loansApi.updateStatus(application.id, { status: 'UNDER_REVIEW', remarks: 'Moved to review by Loan Officer' });
+                  if (response.success) {
+                    toast({ title: 'Success', description: 'Application moved to Under Review' });
+                    fetchApplication(application.id);
+                  }
+                } catch (error: any) {
+                  toast({ title: 'Error', description: error.message || 'Failed to update status', variant: 'destructive' });
+                } finally {
+                  setActionLoading(false);
+                }
+              }} 
+              disabled={actionLoading}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Start Review
+            </Button>
+          )}
           {application.status === 'pending' && (
             <>
               <Button variant="outline" onClick={handleReject} disabled={actionLoading}>
@@ -131,6 +156,42 @@ export default function LoanApplicationDetailPage({ params }: { params: Promise<
             </>
           )}
         </div>
+      </div>
+
+      {/* BRD v5.0: Quick Actions */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Link href={`/dashboard/loans/applications/${application.id}/documents`}>
+          <Card className="hover:border-primary cursor-pointer transition-colors">
+            <CardContent className="p-4 text-center">
+              <FileText className="w-8 h-8 mx-auto mb-2 text-primary" />
+              <p className="text-sm font-medium">Documents</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href={`/dashboard/loans/applications/${application.id}/collateral`}>
+          <Card className="hover:border-primary cursor-pointer transition-colors">
+            <CardContent className="p-4 text-center">
+              <Shield className="w-8 h-8 mx-auto mb-2 text-primary" />
+              <p className="text-sm font-medium">Collateral</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href={`/dashboard/loans/applications/${application.id}/can`}>
+          <Card className="hover:border-primary cursor-pointer transition-colors">
+            <CardContent className="p-4 text-center">
+              <FileText className="w-8 h-8 mx-auto mb-2 text-primary" />
+              <p className="text-sm font-medium">CAN & Sanction</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href={`/dashboard/loans/applications/${application.id}/disburse`}>
+          <Card className="hover:border-primary cursor-pointer transition-colors">
+            <CardContent className="p-4 text-center">
+              <DollarSign className="w-8 h-8 mx-auto mb-2 text-primary" />
+              <p className="text-sm font-medium">Disbursement</p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

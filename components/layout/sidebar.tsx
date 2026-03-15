@@ -98,6 +98,7 @@ const navigationItems: NavItem[] = [
     tenantOnly: true,
     children: [
       { label: 'All Loans', href: '/dashboard/loans', icon: <Banknote className="w-4 h-4" /> },
+      { label: 'Loan Products', href: '/dashboard/loans/products', icon: <FileText className="w-4 h-4" />, requiredPermissions: [Permission.LOAN_CREATE] },
       { label: 'New Application', href: '/dashboard/loans/new', icon: <FileText className="w-4 h-4" />, requiredPermissions: [Permission.LOAN_CREATE] },
       { label: 'EMI Collection', href: '/dashboard/loans/emi-collection', icon: <CreditCard className="w-4 h-4" />, requiredPermissions: [Permission.LOAN_REPAY] },
       { label: 'Write-Off & Recovery', href: '/dashboard/loans/write-off', icon: <TrendingDown className="w-4 h-4" /> },

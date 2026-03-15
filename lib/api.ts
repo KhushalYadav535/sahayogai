@@ -782,6 +782,17 @@ export const meApi = {
       body: JSON.stringify(body),
       headers: { Authorization: `Bearer ${token || getMemberToken() || ""}` },
     }),
+
+  // BRD v5.0 LN-F06: Get active loan products for member portal
+  products: (token?: string) =>
+    api<{ success: boolean; products: any[] }>("/me/products", {
+      headers: { Authorization: `Bearer ${token || getMemberToken() || ""}` },
+    }),
+
+  profile: (token?: string) =>
+    api<{ success: boolean; member: any }>("/me/profile", {
+      headers: { Authorization: `Bearer ${token || getMemberToken() || ""}` },
+    }),
 };
 
 // Users (tenant-scoped)
@@ -1273,6 +1284,10 @@ export const approvalsApi = {
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     });
   },
+  getComparison: (id: string, source: string, token?: string) =>
+    api<{ success: boolean; comparison: any }>(`/approvals/${id}/comparison?source=${source}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
   approveVoucher: (id: string, body?: { comments?: string }, token?: string) =>
     api<{ success: boolean; voucher: any }>(`/approvals/voucher/${id}/approve`, {
       method: "POST",
@@ -1295,6 +1310,18 @@ export const approvalsApi = {
     api<{ success: boolean; application: any }>(`/approvals/loan/${id}/reject`, {
       method: "POST",
       body: JSON.stringify(body || {}),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  approveProduct: (id: string, body: { action: "APPROVE" | "REJECT"; reasonCode: string; reason?: string }, token?: string) =>
+    api<{ success: boolean; product: any }>(`/approvals/product/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  approveScheme: (id: string, body: { action: "APPROVE" | "REJECT"; reasonCode: string; reason?: string }, token?: string) =>
+    api<{ success: boolean; scheme: any }>(`/approvals/scheme/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify(body),
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
 };
@@ -1517,6 +1544,205 @@ export const riskControlsApi = {
     }),
 };
 
+// BRD v5.0: Loan Product Master API
+export const loanProductsApi = {
+  list: (params?: { status?: string; category?: string; isActive?: boolean }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.category) q.set("category", params.category);
+    if (params?.isActive !== undefined) q.set("isActive", String(params.isActive));
+    return api<{ success: boolean; products: any[] }>(
+      `/loans/products?${q}`,
+      { headers: { Authorization: `Bearer ${token || getToken() || ""}` } }
+    );
+  },
+  get: (id: string, token?: string) =>
+    api<{ success: boolean; product: any }>(`/loans/products/${id}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  create: (body: Record<string, any>, token?: string) =>
+    api<{ success: boolean; product: any }>("/loans/products", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  update: (id: string, body: Record<string, any>, token?: string) =>
+    api<{ success: boolean; product: any }>(`/loans/products/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  submit: (id: string, token?: string) =>
+    api<{ success: boolean; product: any }>(`/loans/products/${id}/submit`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  approve: (id: string, body: { action: "APPROVE" | "REJECT"; reasonCode: string; reason?: string }, token?: string) =>
+    api<{ success: boolean; product: any }>(`/loans/products/${id}/approve`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  versions: (id: string, token?: string) =>
+    api<{ success: boolean; versions: any[] }>(`/loans/products/${id}/versions`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  compare: (id: string, version1: string, version2: string, token?: string) =>
+    api<{ success: boolean; comparison: any }>(`/loans/products/${id}/compare?version1=${version1}&version2=${version2}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+};
+
+// BRD v5.0: Loan Documents API
+export const loanDocumentsApi = {
+  getChecklist: (productId: string, token?: string) =>
+    api<{ success: boolean; checklist: any[] }>(`/loans/products/${productId}/checklist`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  createChecklistItem: (productId: string, body: Record<string, any>, token?: string) =>
+    api<{ success: boolean; checklist: any }>(`/loans/products/${productId}/checklist`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  getDocuments: (applicationId: string, token?: string) =>
+    api<{ success: boolean; documents: any[]; readiness: any }>(`/loans/applications/${applicationId}/documents`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  uploadDocument: (applicationId: string, checklistId: string, file: File, token?: string) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("checklistId", checklistId);
+    return api<{ success: boolean; document: any }>(`/loans/applications/${applicationId}/documents`, {
+      method: "POST",
+      body: formData,
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    });
+  },
+  updateDocumentStatus: (applicationId: string, docId: string, body: { status: string; reason?: string }, token?: string) =>
+    api<{ success: boolean; document: any }>(`/loans/applications/${applicationId}/documents/${docId}/status`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  checkReadiness: (applicationId: string, token?: string) =>
+    api<{ success: boolean; ready: boolean; blockingDocuments: any[] }>(`/loans/applications/${applicationId}/documents/readiness`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+};
+
+// BRD v5.0: Loan Collateral API
+export const loanCollateralApi = {
+  create: (applicationId: string, body: Record<string, any>, token?: string) =>
+    api<{ success: boolean; collateral: any; ltvRatio: number }>(`/loans/applications/${applicationId}/collateral`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  calculateGold: (body: Record<string, any>, token?: string) =>
+    api<{ success: boolean; eligibleAmount: number; maxAllowedAmount: number; ltvRatio: number }>("/loans/collateral/gold/calculate", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  list: (params?: { loanId?: string }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.loanId) q.set("loanId", params.loanId);
+    return api<{ success: boolean; collaterals: any[] }>(`/loans/collaterals?${q}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    });
+  },
+};
+
+// BRD v5.0: Loan Sanction API
+export const loanSanctionApi = {
+  generateCAN: (applicationId: string, token?: string) =>
+    api<{ success: boolean; can: any }>(`/loans/applications/${applicationId}/generate-can`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  getCAN: (applicationId: string, token?: string) =>
+    api<{ success: boolean; can: any }>(`/loans/applications/${applicationId}/can`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  submitForSanction: (applicationId: string, body: { recommendation: string }, token?: string) =>
+    api<{ success: boolean; application: any; can: any }>(`/loans/applications/${applicationId}/submit-for-sanction`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  getAuthorityMatrix: (token?: string) =>
+    api<{ success: boolean; matrix: any[] }>("/loans/sanction-authority-matrix", {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  sanction: (applicationId: string, body: { action: string; reasonCode?: string; reason?: string; exceptionJustification?: string }, token?: string) =>
+    api<{ success: boolean; application: any; can: any; sanctionLetter?: any }>(`/loans/applications/${applicationId}/sanction`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  acknowledgeSanction: (applicationId: string, body: { signatureUrl?: string }, token?: string) =>
+    api<{ success: boolean; application: any }>(`/loans/applications/${applicationId}/acknowledge-sanction`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  getSanctionLetterPDF: (applicationId: string, token?: string) =>
+    api<{ success: boolean; pdfData: any }>(`/loans/applications/${applicationId}/sanction-letter/pdf`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+};
+
+// BRD v5.0: Loan Disbursement API
+export const loanDisbursementApi = {
+  preDisbursementCheck: (applicationId: string, token?: string) =>
+    api<{ success: boolean; ready: boolean; conditions: any[]; blockingItems: any[] }>(`/loans/applications/${applicationId}/pre-disbursement-check`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  createAccount: (applicationId: string, body: { sanctionedAmount: number; interestRate: number; tenureMonths: number }, token?: string) =>
+    api<{ success: boolean; loan: any }>(`/loans/applications/${applicationId}/create-account`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  disburse: (loanId: string, body: { disbursementMode: string; bankAccountDetails?: any; amount: number }, token?: string) =>
+    api<{ success: boolean; loan: any; message: string }>(`/loans/${loanId}/disburse`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  approveDisbursement: (loanId: string, body: { signatureVerified?: boolean }, token?: string) =>
+    api<{ success: boolean; loan: any; voucher: any; message: string }>(`/loans/${loanId}/disburse/approve`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  getVoucher: (loanId: string, token?: string) =>
+    api<{ success: boolean; voucher: any }>(`/loans/${loanId}/disbursement-voucher`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  createTrancheSchedule: (loanId: string, body: { tranches: Array<{ amount: number; expectedDate: string; condition?: string }> }, token?: string) =>
+    api<{ success: boolean; trancheSchedule: any; message: string }>(`/loans/${loanId}/tranches`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  disburseTranche: (loanId: string, trancheId: string, body: { disbursementMode: string; bankAccountDetails?: any; amount: number }, token?: string) =>
+    api<{ success: boolean; message: string }>(`/loans/${loanId}/tranches/${trancheId}/disburse`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+};
+
+// BRD v5.0: Guarantor Exposure API
+export const guarantorExposureApi = {
+  getExposure: (memberId: string, token?: string) =>
+    api<{ success: boolean; totalExposure: number; maxAllowedExposure: number; currentGuarantees: any[] }>(`/loans/guarantors/${memberId}/exposure`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+};
+
 export const loansApi = {
   // LN-010: Restructuring/Refinance
   restructure: (id: string, body: { newTenureMonths?: number; newEmiAmount?: number; moratoriumExtensionMonths?: number; bodResolutionRef: string; remarks?: string }, token?: string) =>
@@ -1615,6 +1841,12 @@ export const loansApi = {
       { headers: { Authorization: `Bearer ${token || getToken() || ""}` } }
     );
   },
+  updateStatus: (id: string, body: { status: "UNDER_REVIEW" | "PENDING_SANCTION" | "REJECTED"; remarks?: string }, token?: string) =>
+    api<{ success: boolean; application: any }>(`/loans/applications/${id}/status`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
   createApplication: (body: Record<string, any>, token?: string) =>
     api<{ success: boolean; application: any }>("/loans/applications", {
       method: "POST",
