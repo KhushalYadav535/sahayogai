@@ -277,6 +277,50 @@ export default function LoanSchedulePage({ params }: LoanSchedulePageProps) {
           </Card>
         </motion.div>
 
+        {/* IMP-16: Payment Breakdown Explanation */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+        >
+          <Card className="glass border-white/20 dark:border-white/10 shadow-xl overflow-hidden">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <span className="w-1 h-5 bg-gradient-to-b from-emerald-500 to-amber-500 rounded-full" />
+                Payment Breakdown
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">How your EMI is allocated (Penal → Interest → Principal)</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-emerald-500" />
+                  <span className="text-xs font-medium">Principal</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-amber-500" />
+                  <span className="text-xs font-medium">Interest</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-red-500" />
+                  <span className="text-xs font-medium">Penal (if overdue)</span>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Of your EMI, interest for the month is cleared first, then your loan balance (principal) is reduced. Your remaining balance is {formatCurrency(Number(loan.outstandingPrincipal || 0), true)}.
+              </p>
+              {overdueCount > 0 && (
+                <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+                  A late payment fee (penal interest) is deducted before interest and principal. To avoid this fee, please pay by the due date.
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground italic">
+                Penal interest is a separate charge for late payment. It is never added to your loan balance — RBI rule.
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* Overdue Alert */}
         {overdueCount > 0 && (
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}>

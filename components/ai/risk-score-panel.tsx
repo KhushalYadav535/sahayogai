@@ -36,7 +36,8 @@ export function RiskScorePanel({
   }
 
   const handleOverride = () => {
-    if (overrideReason && overrideNotes) {
+    const notesValid = overrideReason === 'OTHER' ? overrideNotes.length >= 50 : overrideNotes.length > 0
+    if (overrideReason && notesValid) {
       onOverride?.(overrideReason, overrideNotes)
       setShowOverrideModal(false)
       setOverrideReason('')
@@ -166,22 +167,25 @@ export function RiskScorePanel({
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">Reason *</label>
+                <label className="text-sm font-medium mb-2 block">Override Category * (IMP-13)</label>
                 <select
                   value={overrideReason}
                   onChange={(e) => setOverrideReason(e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg text-sm"
                 >
-                  <option value="">Select reason...</option>
-                  <option value="INSUFFICIENT_DATA">Insufficient Data</option>
-                  <option value="MANUAL_ASSESSMENT">Manual Assessment</option>
-                  <option value="DIRECTOR_OVERRIDE">Director Override</option>
+                  <option value="">Select category...</option>
+                  <option value="GUARANTOR_STRENGTH">Guarantor Strength</option>
+                  <option value="COLLATERAL_SECURED">Collateral Secured</option>
+                  <option value="BANKING_RELATIONSHIP">Banking Relationship</option>
+                  <option value="INCOME_UNDECLARED">Income Undeclared</option>
+                  <option value="BOARD_DIRECTION">Board Direction</option>
+                  <option value="EXCEPTION_APPROVED">Exception Approved</option>
                   <option value="OTHER">Other</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-2 block">Notes *</label>
+                <label className="text-sm font-medium mb-2 block">Override Narrative * {overrideReason === 'OTHER' ? '(min 50 characters)' : ''}</label>
                 <textarea
                   value={overrideNotes}
                   onChange={(e) => setOverrideNotes(e.target.value)}
@@ -190,6 +194,7 @@ export function RiskScorePanel({
                 />
               </div>
 
+              <p className="text-xs text-muted-foreground">This override is being logged and will be reviewed in the quarterly AI bias audit.</p>
               <div className="flex gap-2 justify-end">
                 <Button
                   variant="outline"
@@ -200,7 +205,7 @@ export function RiskScorePanel({
                 </Button>
                 <Button
                   size="sm"
-                  disabled={!overrideReason || !overrideNotes}
+                  disabled={!overrideReason || !overrideNotes || (overrideReason === 'OTHER' && overrideNotes.length < 50)}
                   onClick={handleOverride}
                 >
                   Confirm Override

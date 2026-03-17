@@ -113,6 +113,7 @@ const navigationItems: NavItem[] = [
       { label: 'All Deposits', href: '/dashboard/deposits', icon: <PiggyBank className="w-4 h-4" /> },
       { label: 'New Deposit', href: '/dashboard/deposits/new', icon: <FileText className="w-4 h-4" />, requiredPermissions: [Permission.DEPOSIT_CREATE] },
       { label: 'Maturity Queue', href: '/dashboard/deposits/maturity', icon: <TrendingUp className="w-4 h-4" /> },
+      { label: 'Account Closure', href: '/dashboard/deposits/close', icon: <UserX className="w-4 h-4" />, requiredPermissions: [Permission.DEPOSIT_VIEW] },
       { label: 'TDS Management', href: '/dashboard/deposits/tds', icon: <Shield className="w-4 h-4" /> },
     ],
   },
@@ -141,6 +142,7 @@ const navigationItems: NavItem[] = [
       { label: 'P&L Statement', href: '/dashboard/accounting/pl', icon: <TrendingUp className="w-4 h-4" /> },
       { label: 'GL Posting Matrix', href: '/dashboard/accounting/gl-posting-matrix', icon: <Database className="w-4 h-4" /> },
       { label: 'Day-End Process', href: '/dashboard/accounting/day-end', icon: <CheckSquare className="w-4 h-4" /> },
+      { label: 'Anomaly Alerts', href: '/dashboard/accounting/anomaly-alerts', icon: <AlertTriangle className="w-4 h-4" />, requiredRoles: [UserRole.SENIOR_ACCOUNTANT, UserRole.COMPLIANCE_OFFICER] },
       { label: 'Month-End Close', href: '/dashboard/accounting/month-end', icon: <CheckSquare className="w-4 h-4" /> },
       { label: 'Reversal Entries', href: '/dashboard/accounting/reversal', icon: <TrendingUp className="w-4 h-4" /> },
       { label: 'Audit Adjustments', href: '/dashboard/accounting/audit-adjustments', icon: <Shield className="w-4 h-4" /> },
@@ -163,6 +165,7 @@ const navigationItems: NavItem[] = [
     tenantOnly: true,
     children: [
       { label: 'Dashboard', href: '/dashboard/compliance/dashboard', icon: <BarChart3 className="w-4 h-4" /> },
+      { label: 'AI Audit Log', href: '/dashboard/compliance/ai-audit-log', icon: <FileText className="w-4 h-4" /> },
       { label: 'Reports Hub', href: '/dashboard/compliance/reports', icon: <FileText className="w-4 h-4" /> },
       { label: 'NABARD Report', href: '/dashboard/compliance/nabard-report', icon: <Building2 className="w-4 h-4" /> },
       { label: 'Registrar Return', href: '/dashboard/compliance/registrar-return', icon: <Send className="w-4 h-4" /> },

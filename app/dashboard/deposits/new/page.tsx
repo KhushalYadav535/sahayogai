@@ -10,8 +10,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
 import { ArrowLeft, Search, CheckCircle, Info, AlertTriangle } from 'lucide-react';
-import { membersApi, depositsApi } from '@/lib/api';
+import { membersApi, depositsApi, interestApi } from '@/lib/api';
 
+// IMP-02/04: Fallback when no scheme from API; API schemes used when available
 const RATE_SLABS: Record<string, Record<string, number>> = {
     FDR: { '1-3': 6.5, '3-6': 7.0, '6-12': 7.5, '12-24': 8.0, '24+': 8.25 },
     RD: { '12-24': 7.0, '24-36': 7.25, '36-60': 7.5 },
@@ -75,6 +76,17 @@ export default function NewDepositPage() {
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [createdDeposit, setCreatedDeposit] = useState<{ depositNumber: string; maturityDate: string; maturityAmount: number } | null>(null);
+    // IMP-02: Fetch active FDR scheme for live rate lookup
+    const [fdrScheme, setFdrScheme] = useState<{ slabs: Array<{ minTenureDays?: number; maxTenureDays?: number; rate: number }> } | null>(null);
+
+    useEffect(() => {
+        interestApi.schemes.list().then(r => {
+            if (r.success && r.schemes) {
+                const active = (r.schemes as any[]).find((s: any) => s.productType === 'FDR' && (s.status === 'ACTIVE' || s.status === 'active'));
+                if (active?.slabs?.length) setFdrScheme({ slabs: active.slabs });
+            }
+        }).catch(() => {});
+    }, []);
 
     const memberAge = member?.dateOfBirth
         ? Math.floor((new Date().getTime() - new Date(member.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365.25))
@@ -99,7 +111,21 @@ export default function NewDepositPage() {
         return () => clearTimeout(t);
     }, [fetchMembers, search]);
 
+    // IMP-02: Live rate from scheme slab when available; else fallback
+    const tenureDays = months * 30;
     let rate = getRate(type, months);
+    let slabMatch: string | null = null;
+    if (type === 'FDR' && fdrScheme?.slabs?.length) {
+        const slab = fdrScheme.slabs.find((s: any) => {
+            const min = s.minTenureDays ?? 0;
+            const max = s.maxTenureDays ?? 99999;
+            return tenureDays >= min && tenureDays <= max;
+        });
+        if (slab) {
+            rate = Number(slab.rate);
+            slabMatch = `${Math.floor((slab.minTenureDays || 0) / 30)}–${Math.ceil((slab.maxTenureDays || 0) / 30)} months → ${rate}% p.a.`;
+        }
+    }
     if (seniorCitizen && isEligibleSC) rate += 0.5;
 
     const maturity = calcMaturity(amount, rate, months, compound);
@@ -219,10 +245,32 @@ export default function NewDepositPage() {
             <Card>
                 <CardContent className="pt-4 space-y-4">
                     <div><label className="text-sm font-medium">Amount (₹) *</label><Input className="mt-1 text-xl font-bold" type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} /></div>
+                    {/* IMP-02: Tenure as free numeric input (not just dropdown/slider) */}
                     <div>
-                        <div className="flex justify-between mb-1"><label className="text-sm font-medium">Tenure</label><span className="text-sm font-bold text-primary">{months} months</span></div>
-                        <input type="range" min={type === 'MIS' ? 60 : type === 'RD' ? 12 : 1} max={type === 'MIS' ? 60 : 84} value={months} onChange={e => setMonths(Number(e.target.value))} className="w-full" disabled={type === 'MIS'} />
+                        <label className="text-sm font-medium">Tenure (months) *</label>
+                        <Input
+                            type="number"
+                            min={type === 'MIS' ? 60 : type === 'RD' ? 12 : 1}
+                            max={type === 'MIS' ? 60 : 84}
+                            value={months}
+                            onChange={e => setMonths(Math.max(type === 'MIS' ? 60 : type === 'RD' ? 12 : 1, Math.min(84, Number(e.target.value) || 12)))}
+                            className="mt-1"
+                            disabled={type === 'MIS'}
+                            placeholder="Enter months"
+                        />
                     </div>
+                    {type === 'FDR' && slabMatch && (
+                        <div className="p-2 rounded-lg bg-primary/10 border border-primary/20 text-sm">
+                            <span className="text-muted-foreground">Scheme slab applied: </span>
+                            <span className="font-semibold text-primary">{slabMatch}</span>
+                        </div>
+                    )}
+                    {type === 'FDR' && (
+                        <Alert className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
+                            <Info className="h-4 w-4" />
+                            <AlertDescription className="text-xs">This rate will be locked for the entire tenure at booking date.</AlertDescription>
+                        </Alert>
+                    )}
 
                     {/* Rate Table */}
                     <div className="p-3 rounded-lg bg-muted/30 border border-border">

@@ -114,6 +114,11 @@ export default function InterestRatesPage() {
             toast.error("Please add at least one rate slab");
             return;
         }
+        // IMP-04: FDR scheme must have minimum 3 tenure bands
+        if (formData.productType === "FDR" && slabs.length < 3) {
+            toast.error("FDR schemes require at least 3 tenure bands (e.g. 1–12, 12–36, 36–60 months)");
+            return;
+        }
 
         // Validate date is not in the past
         const selectedDate = new Date(formData.effectiveFromDate);

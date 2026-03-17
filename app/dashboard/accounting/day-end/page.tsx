@@ -12,14 +12,13 @@ import { ArrowLeft, CheckCircle, AlertTriangle, Zap, Loader2 } from 'lucide-reac
 import { Progress } from '@/components/ui/progress';
 import { jobsApi } from '@/lib/api';
 
+// IMP-10: ACC-005 Day-End Checklist — 5 items per BRD spec
 const DAY_END_TASKS = [
-    { id: 'interest', label: 'Post Interest Accruals', sub: 'SB, FDR, Loan interest calculations', auto: true },
-    { id: 'penal', label: 'Post Penal Interest', sub: 'Overdue EMI penal charges', auto: true },
-    { id: 'tds', label: 'TDS Computation', sub: 'Compute TDS on interest > ₹40,000', auto: true },
-    { id: 'npa', label: 'NPA Classification', sub: 'IRAC norm classification (STANDARD/SUB/DOUBT)', auto: true },
-    { id: 'gl', label: 'GL Reconciliation', sub: 'Verify subsidiary ledger balances', auto: false },
-    { id: 'cash', label: 'Cash Position', sub: 'Close cash-in-hand and vault balance', auto: false },
-    { id: 'backup', label: 'Day-End Backup', sub: 'Snapshot all account balances', auto: true },
+    { id: 'accrual', label: 'Accrual job completed successfully', sub: 'SB, FDR, Loan interest; penal; TDS; NPA', auto: true },
+    { id: 'exception', label: 'Exception report reviewed', sub: 'Manual — Accountant confirms review', auto: false },
+    { id: 'maker_checker', label: 'All pending maker-checker items cleared or escalated', sub: 'Auto — system count', auto: true },
+    { id: 'cash', label: 'Cash balance matches system balance', sub: 'Manual — enter physical cash for reconciliation', auto: false },
+    { id: 'counter', label: 'All counter transactions closed', sub: 'Auto — system check', auto: true },
 ];
 
 export default function DayEndPage() {
@@ -49,8 +48,8 @@ export default function DayEndPage() {
                     dormantAccountsMarked: res.dormantAccountsMarked ?? 0,
                     message: res.message,
                 });
-                DAY_END_TASKS.forEach((t, i) => {
-                    if (t.auto) setTaskStatus(prev => ({ ...prev, [t.id]: 'done' }));
+                DAY_END_TASKS.filter(t => t.auto).forEach(t => {
+                    setTaskStatus(prev => ({ ...prev, [t.id]: 'done' }));
                 });
                 setProgress(100);
             } else {

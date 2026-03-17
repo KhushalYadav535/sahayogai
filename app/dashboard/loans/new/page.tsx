@@ -428,12 +428,40 @@ export default function NewLoanPage() {
                   />
                 </div>
               )}
+              {/* IMP-12: Live EMI calculator — inline panel with EMI-to-income, total cost, 40% flag */}
               {emi > 0 && (
-                <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 text-center">
-                  <p className="text-xs text-muted-foreground">Estimated Monthly EMI</p>
-                  <p className="text-3xl font-bold text-primary mt-1">{formatCurrency(emi)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">@ {rate}% p.a. | {tenure} months | Principal: {formatCurrency(amount, 0)}</p>
-                </div>
+                <Card className="p-4 bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">EMI Preview (Live)</p>
+                  <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Monthly EMI</p>
+                      <p className="text-2xl font-bold text-primary">{formatCurrency(emi)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Total Repayment</p>
+                      <p className="text-lg font-semibold">{formatCurrency(emi * tenure, 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Total Interest</p>
+                      <p className="text-lg font-semibold">{formatCurrency(emi * tenure - amount, 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">EMI / Income</p>
+                      <p className={`text-lg font-semibold ${monthlyIncome > 0 && emi / monthlyIncome > 0.4 ? 'text-amber-600' : ''}`}>
+                        {monthlyIncome > 0 ? `${((emi / monthlyIncome) * 100).toFixed(1)}%` : '—'}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">@ {rate}% p.a. | {tenure} months | Principal: {formatCurrency(amount, 0)}</p>
+                  {monthlyIncome > 0 && emi / monthlyIncome > 0.4 && (
+                    <Alert className="mt-2 border-amber-200 bg-amber-50 dark:bg-amber-950/30">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      <AlertDescription>
+                        EMI-to-income ratio exceeds 40%. Consider lower amount or longer tenure.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </Card>
               )}
               <div>
                 <label className="text-sm font-medium">Collateral Type</label>
@@ -510,7 +538,14 @@ export default function NewLoanPage() {
                         key={m.id}
                         onClick={async () => {
                           const exposure = await checkGuarantorExposure(m.id);
+                          const newTotal = (exposure?.totalExposure || 0) + amount;
+                          const maxAllowed = exposure?.maxAllowedExposure;
+                          if (maxAllowed != null && newTotal > maxAllowed) {
+                            toast({ title: 'Cannot add guarantor', description: 'Guarantor has reached maximum exposure limit (200%).', variant: 'destructive' });
+                            return;
+                          }
                           setGuarantors(prev => [...prev, { id: m.id, name: m.name, memberId: m.memberId, exposure }]);
+                          setGuarantorExposure(prev => ({ ...prev, [m.id]: exposure }));
                           setGuarantorSearch('');
                         }}
                         className="w-full text-left p-3 rounded-lg border border-border hover:border-primary transition-colors"
@@ -543,40 +578,38 @@ export default function NewLoanPage() {
                         Remove
                       </Button>
                     </div>
+                    {/* IMP-21: Guarantor exposure — 80% amber, 200% red block, live computation */}
                     {exposure && (
                       <div className="space-y-1 text-xs">
                         <div className="flex items-center gap-2">
                           <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span className="text-muted-foreground">
-                            Total Exposure: ₹{exposure.totalExposure?.toLocaleString('en-IN') || 0}
-                          </span>
+                          <span className="text-muted-foreground">Total Exposure: ₹{(exposure.totalExposure || 0).toLocaleString('en-IN')}</span>
                         </div>
-                        {exposure.maxAllowedExposure && (
-                          <div className={`flex items-center gap-2 ${
-                            exposure.totalExposure + amount > exposure.maxAllowedExposure
-                              ? 'text-red-600'
-                              : 'text-green-600'
-                          }`}>
-                            <span>
-                              Max Allowed: ₹{exposure.maxAllowedExposure.toLocaleString('en-IN')} ({exposure.maxExposurePct}% of income)
-                            </span>
-                            {exposure.totalExposure + amount > exposure.maxAllowedExposure && (
-                              <AlertTriangle className="w-3.5 h-3.5" />
-                            )}
-                          </div>
-                        )}
+                        {exposure.maxAllowedExposure && exposure.maxAllowedExposure > 0 && (() => {
+                          const newTotal = (exposure.totalExposure || 0) + amount;
+                          const pct = (newTotal / exposure.maxAllowedExposure) * 100;
+                          const breached = pct >= 100;
+                          const amber = pct >= 80 && !breached;
+                          return (
+                            <div className={`flex items-center gap-2 ${breached ? 'text-red-600' : amber ? 'text-amber-600' : 'text-green-600'}`}>
+                              <span>
+                                Cap: ₹{exposure.maxAllowedExposure.toLocaleString('en-IN')} ({exposure.maxExposurePct}%) · Headroom: ₹{Math.max(0, exposure.maxAllowedExposure - newTotal).toLocaleString('en-IN')}
+                              </span>
+                              {breached && <AlertTriangle className="w-3.5 h-3.5" />}
+                              {amber && !breached && <AlertTriangle className="w-3.5 h-3.5" />}
+                            </div>
+                          );
+                        })()}
                         {exposure.currentGuarantees && exposure.currentGuarantees.length > 0 && (
-                          <p className="text-muted-foreground">
-                            Active Guarantees: {exposure.currentGuarantees.length}
-                          </p>
+                          <p className="text-muted-foreground">Active Guarantees: {exposure.currentGuarantees.length}</p>
                         )}
                       </div>
                     )}
-                    {exposure && exposure.totalExposure + amount > (exposure.maxAllowedExposure || Infinity) && (
+                    {exposure && exposure.maxAllowedExposure && (exposure.totalExposure || 0) + amount > exposure.maxAllowedExposure && (
                       <Alert className="border-red-200 bg-red-50 dark:bg-red-950">
                         <AlertTriangle className="h-4 w-4 text-red-600" />
                         <AlertDescription className="text-xs text-red-700">
-                          Guarantor exposure will exceed maximum allowed limit
+                          Guarantor has reached maximum exposure limit (200%). Cannot be added to this application.
                         </AlertDescription>
                       </Alert>
                     )}

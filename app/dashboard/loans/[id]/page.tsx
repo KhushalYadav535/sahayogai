@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RiskScorePanel } from '@/components/ai/risk-score-panel';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
@@ -57,9 +58,11 @@ function mapLoan(l: any) {
     moratoriumEnd: l.moratoriumEnd ? new Date(l.moratoriumEnd) : null,
     emiSchedule: (l.emiSchedule || []).map((e: any, i: number) => ({
       no: e.installmentNo ?? i + 1,
+      id: e.id,
       dueDate: e.dueDate ? new Date(e.dueDate) : new Date(),
       principal: Number(e.principalAmount ?? e.principal ?? 0),
       interest: Number(e.interestAmount ?? e.interest ?? 0),
+      penal: Number(e.penalAmount ?? 0),
       total: Number(e.totalAmount ?? e.total ?? 0),
       paid: e.status === 'paid' || e.status === 'PAID' ? Number(e.totalAmount ?? e.total ?? 0) : 0,
       balance: Number(e.outstanding ?? 0),
@@ -75,7 +78,8 @@ export default function LoanDetailPage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [collectOpen, setCollectOpen] = useState(false);
   const [preCloseOpen, setPreCloseOpen] = useState(false);
-  const [selectedEmi, setSelectedEmi] = useState<{ no: number; dueDate: Date; principal: number; interest: number; total: number; paid: number; balance: number; status: string } | null>(null);
+  const [selectedEmi, setSelectedEmi] = useState<{ id?: string; no: number; dueDate: Date; principal: number; interest: number; penal: number; total: number; paid: number; balance: number; status: string } | null>(null);
+  const [payAmount, setPayAmount] = useState(0);
 
   useEffect(() => {
     loansApi.get(params.id)
@@ -110,13 +114,19 @@ export default function LoanDetailPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* IMP-07: Penal interest on SEPARATE line — never merged; Staff guidance */}
+      <Alert className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
+        <AlertTriangle className="h-4 w-4 text-amber-600" />
+        <AlertDescription className="text-xs">
+          <strong>Staff guidance:</strong> When communicating dues to the member, present outstanding principal and penal interest separately. Do not quote a combined figure.
+        </AlertDescription>
+      </Alert>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Principal Outstanding', value: formatCurrency(loan.outstanding), color: 'text-foreground' },
-          { label: 'Interest Accrued', value: formatCurrency(loan.interestAccrued), color: 'text-amber-600' },
-          { label: 'Penal Interest', value: formatCurrency(loan.penalInterest), color: 'text-red-600' },
-          { label: 'Total Outstanding', value: formatCurrency(loan.totalOutstanding), color: 'text-primary font-bold' },
+          { label: 'Outstanding Principal', value: formatCurrency(loan.outstanding), color: 'text-foreground' },
+          { label: 'Regular Interest Accrued', value: formatCurrency(loan.interestAccrued), color: 'text-amber-600' },
+          { label: 'Penal Interest (separate)', value: formatCurrency(loan.penalInterest), color: 'text-red-600' },
+          { label: 'Total to Regularise', value: formatCurrency(loan.totalOutstanding), color: 'text-primary font-bold' },
         ].map(c => (
           <Card key={c.label}>
             <CardContent className="pt-4">
@@ -387,16 +397,49 @@ export default function LoanDetailPage({ params }: { params: { id: string } }) {
         </DialogContent>
       </Dialog>
 
-      {/* EMI Collection Modal */}
-      <Dialog open={collectOpen} onOpenChange={setCollectOpen}>
-        <DialogContent><DialogHeader><DialogTitle>Collect EMI #{selectedEmi?.no}</DialogTitle></DialogHeader>
-          {selectedEmi && (
-            <div className="space-y-3 text-sm">
-              <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950"><AlertTriangle className="h-4 w-4 text-amber-600" /><AlertDescription className="text-amber-800 text-xs">This EMI is overdue. Penal interest may apply.</AlertDescription></Alert>
-              <div className="flex justify-between"><span className="text-muted-foreground">Principal</span><span>{formatCurrency(selectedEmi.principal)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Interest</span><span>{formatCurrency(selectedEmi.interest)}</span></div>
-              <div className="flex justify-between border-t border-border pt-2 font-bold"><span>Total Due</span><span className="text-primary">{formatCurrency(selectedEmi.total)}</span></div>
-              <Button className="w-full" onClick={() => setCollectOpen(false)}>Process Payment</Button>
+      {/* IMP-08: EMI Collection with Payment Allocation Preview */}
+      <Dialog open={collectOpen} onOpenChange={(o) => { setCollectOpen(o); if (!o) setPayAmount(0); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Collect EMI #{selectedEmi?.no}</DialogTitle></DialogHeader>
+          {selectedEmi && loan && (
+            <div className="space-y-4 text-sm">
+              <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950"><AlertTriangle className="h-4 w-4 text-amber-600" /><AlertDescription className="text-amber-800 text-xs">Allocation order: Penal → Interest → Principal</AlertDescription></Alert>
+              <div className="space-y-1">
+                <div className="flex justify-between"><span className="text-muted-foreground">Penal Interest Due</span><span className="text-red-600">{formatCurrency(selectedEmi.penal || 0)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Regular Interest Due</span><span>{formatCurrency(selectedEmi.interest)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Principal Due</span><span>{formatCurrency(selectedEmi.principal)}</span></div>
+                <div className="flex justify-between border-t border-border pt-2 font-bold"><span>Total Due</span><span className="text-primary">{formatCurrency(selectedEmi.total + (selectedEmi.penal || 0))}</span></div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Amount to collect</label>
+                <Input type="number" className="mt-1" value={payAmount || ''} onChange={e => setPayAmount(Number(e.target.value) || 0)} placeholder={String(selectedEmi.total + (selectedEmi.penal || 0))} />
+              </div>
+              {payAmount > 0 && (() => {
+                const penalDue = selectedEmi.penal || 0;
+                const intDue = selectedEmi.interest;
+                const princDue = selectedEmi.principal;
+                let rem = payAmount;
+                const penalCleared = Math.min(rem, penalDue); rem -= penalCleared;
+                const intCleared = Math.min(rem, intDue); rem -= intCleared;
+                const princReduced = Math.min(rem, princDue);
+                const remainOut = loan.outstanding - princReduced;
+                return (
+                  <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-1">
+                    <p className="font-semibold text-xs">Payment allocation preview:</p>
+                    <p className="text-xs">Penal cleared: {formatCurrency(penalCleared)} | Interest cleared: {formatCurrency(intCleared)} | Principal reduced: {formatCurrency(princReduced)}</p>
+                    <p className="text-xs font-medium">Remaining outstanding: {formatCurrency(remainOut)}</p>
+                  </div>
+                );
+              })()}
+              <Button className="w-full" onClick={async () => {
+                const amt = payAmount || selectedEmi.total + (selectedEmi.penal || 0);
+                if (!selectedEmi.id) { setCollectOpen(false); return; }
+                try {
+                  await loansApi.payEmi(params.id, { emiId: selectedEmi.id, amount: amt });
+                  window.location.reload();
+                } catch (e: any) { alert(e.message || 'Payment failed'); }
+                setCollectOpen(false);
+              }}>Process Payment</Button>
             </div>
           )}
         </DialogContent>

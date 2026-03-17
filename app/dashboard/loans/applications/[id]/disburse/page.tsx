@@ -42,7 +42,7 @@ export default function LoanDisbursementPage({ params }: { params: Promise<{ id:
   const [approving, setApproving] = useState(false);
   const [isDisburseDialogOpen, setIsDisburseDialogOpen] = useState(false);
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
-  const [disbursementMode, setDisbursementMode] = useState<'CASH' | 'BANK_TRANSFER' | 'CHEQUE' | 'NEFT' | 'RTGS' | 'UPI'>('BANK_TRANSFER');
+  const [disbursementMode, setDisbursementMode] = useState<'CASH' | 'NEFT' | 'RTGS' | 'INTERNAL_TRANSFER' | 'DEMAND_DRAFT'>('NEFT');
   const [bankAccountDetails, setBankAccountDetails] = useState({
     accountNumber: '',
     ifscCode: '',
@@ -58,6 +58,11 @@ export default function LoanDisbursementPage({ params }: { params: Promise<{ id:
       fetchData(p.id);
     });
   }, [params]);
+
+  // IMP-15: Auto RTGS when amount >= ₹2 lakh
+  useEffect(() => {
+    if (disbursementAmount >= 200000) setDisbursementMode('RTGS');
+  }, [disbursementAmount]);
 
   const fetchData = async (id: string) => {
     try {
@@ -140,12 +145,17 @@ export default function LoanDisbursementPage({ params }: { params: Promise<{ id:
     if (!loan) return;
     setDisbursing(true);
     try {
+      const mode = disbursementAmount >= 200000 ? 'RTGS' : disbursementMode;
       const body: any = {
-        disbursementMode,
+        disbursementMode: mode,
         amount: disbursementAmount,
       };
-      if (disbursementMode !== 'CASH' && disbursementMode !== 'CHEQUE') {
-        body.bankAccountDetails = bankAccountDetails;
+      if (mode === 'NEFT' || mode === 'RTGS') {
+        body.bankAccountDetails = {
+          accountNumber: bankAccountDetails.accountNumber,
+          ifsc: bankAccountDetails.ifscCode,
+          bankName: bankAccountDetails.bankName,
+        };
       }
 
       const res = await loanDisbursementApi.disburse(loan.id, body);
@@ -218,54 +228,60 @@ export default function LoanDisbursementPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      {/* Pre-Disbursement Check */}
+      {/* IMP-05: Pre-Disbursement 6-Gate Checklist — UI enforcement with action prompts */}
       {preCheck && (
         <Card>
           <CardHeader>
-            <CardTitle>Pre-Disbursement Checklist</CardTitle>
+            <CardTitle>Pre-Disbursement Checklist (6 Gates)</CardTitle>
             <CardDescription>
               {preCheck.ready
-                ? 'All conditions met. Ready for disbursement.'
-                : 'Some conditions are not met. Please review.'}
+                ? 'All 6 gates are green. Ready for disbursement.'
+                : `${preCheck.conditions?.filter((c: any) => c.status === 'FAIL').length ?? 0} gate(s) remaining — resolve to enable Disburse button`}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {preCheck.conditions?.map((condition: any, idx: number) => (
-                <div
-                  key={idx}
-                  className={`flex items-center gap-3 p-3 rounded-lg border ${
-                    condition.met
-                      ? 'border-green-200 bg-green-50 dark:bg-green-950'
-                      : 'border-red-200 bg-red-50 dark:bg-red-950'
-                  }`}
-                >
-                  {condition.met ? (
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-red-600" />
-                  )}
-                  <div className="flex-1">
-                    <p className="font-medium">{condition.description}</p>
-                    {condition.details && (
-                      <p className="text-xs text-muted-foreground mt-1">{condition.details}</p>
+            <div className="space-y-3">
+              {preCheck.conditions?.map((condition: any, idx: number) => {
+                const passed = condition.status === 'PASS';
+                const actionPrompt: Record<number, { text: string; link?: string }> = {
+                  1: { text: 'Document Tracker — verify mandatory documents', link: `/dashboard/loans/applications/${applicationId}/documents` },
+                  2: { text: 'Ensure sanction letter is acknowledged by member' },
+                  3: { text: 'Collateral — add/verify gold or property registration', link: `/dashboard/loans/applications/${applicationId}/collateral` },
+                  4: { text: 'Insurance — collect premium if product requires' },
+                  5: { text: 'Maker submits first; Checker approves' },
+                  6: { text: 'Create Loan Account & EMI Schedule above' },
+                };
+                const prompt = actionPrompt[condition.id];
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center gap-3 p-3 rounded-lg border ${
+                      passed ? 'border-green-200 bg-green-50 dark:bg-green-950/30' : 'border-red-200 bg-red-50 dark:bg-red-950/30'
+                    }`}
+                  >
+                    {passed ? (
+                      <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
                     )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium">{condition.name}</p>
+                      {condition.details && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{condition.details}</p>
+                      )}
+                      {!passed && prompt && (
+                        <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                          → {prompt.link ? (
+                            <Link href={prompt.link} className="underline hover:text-amber-800">
+                              {prompt.text}. Click to resolve.
+                            </Link>
+                          ) : prompt.text}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {preCheck.blockingItems && preCheck.blockingItems.length > 0 && (
-                <Alert className="border-red-200 bg-red-50 dark:bg-red-950">
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
-                  <AlertDescription>
-                    <p className="font-semibold text-red-800 mb-2">Blocking Items:</p>
-                    <ul className="list-disc list-inside text-sm text-red-700">
-                      {preCheck.blockingItems.map((item: any, idx: number) => (
-                        <li key={idx}>{item}</li>
-                      ))}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -365,10 +381,16 @@ export default function LoanDisbursementPage({ params }: { params: Promise<{ id:
                 </div>
               </div>
               {loan.status === 'SANCTIONED' && (
-                <div className="flex gap-4">
-                  <Button onClick={() => setIsDisburseDialogOpen(true)}>
-                    Initiate Disbursement (Maker)
-                  </Button>
+                <div className="flex flex-col gap-2">
+                  {!preCheck?.ready ? (
+                    <Button disabled variant="secondary">
+                      {preCheck?.conditions?.filter((c: any) => c.status === 'FAIL').length ?? 0} gate(s) remaining — resolve checklist to enable
+                    </Button>
+                  ) : (
+                    <Button onClick={() => setIsDisburseDialogOpen(true)}>
+                      Initiate Disbursement (Maker)
+                    </Button>
+                  )}
                 </div>
               )}
               {loan.status === 'PENDING_DISBURSEMENT' && (
@@ -440,6 +462,15 @@ export default function LoanDisbursementPage({ params }: { params: Promise<{ id:
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {/* IMP-06: GL treatment reference per mode */}
+            <div className="p-3 rounded-lg bg-muted/50 text-xs space-y-1">
+              <p className="font-semibold">GL Treatment Reference:</p>
+              <p>• Cash: Dr Loan A/c · Cr Cash on Hand</p>
+              <p>• NEFT: Dr Loan A/c · Cr NEFT Clearing A/c</p>
+              <p>• RTGS: Dr Loan A/c · Cr RTGS Clearing A/c</p>
+              <p>• Internal: Dr Loan A/c · Cr Member SB A/c</p>
+              <p>• DD: Dr Loan A/c · Cr DD Payable A/c</p>
+            </div>
             <div>
               <Label>Disbursement Amount</Label>
               <Input
@@ -450,21 +481,32 @@ export default function LoanDisbursementPage({ params }: { params: Promise<{ id:
             </div>
             <div>
               <Label>Disbursement Mode *</Label>
-              <Select value={disbursementMode} onValueChange={(value: any) => setDisbursementMode(value)}>
+              <Select
+                value={disbursementAmount >= 200000 ? 'RTGS' : disbursementMode}
+                onValueChange={(value: any) => {
+                  if (disbursementAmount >= 200000) {
+                    setDisbursementMode('RTGS');
+                    return;
+                  }
+                  setDisbursementMode(value);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="CASH">Cash</SelectItem>
-                  <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
-                  <SelectItem value="CHEQUE">Cheque</SelectItem>
-                  <SelectItem value="NEFT">NEFT</SelectItem>
-                  <SelectItem value="RTGS">RTGS</SelectItem>
-                  <SelectItem value="UPI">UPI</SelectItem>
+                  <SelectItem value="NEFT" disabled={disbursementAmount >= 200000}>NEFT {disbursementAmount >= 200000 ? '(not available for ≥ ₹2 lakh)' : ''}</SelectItem>
+                  <SelectItem value="RTGS">RTGS {disbursementAmount >= 200000 ? '(mandatory for ≥ ₹2 lakh)' : ''}</SelectItem>
+                  <SelectItem value="INTERNAL_TRANSFER" disabled={disbursementAmount >= 200000}>Internal Transfer (to member SB)</SelectItem>
+                  <SelectItem value="DEMAND_DRAFT">Demand Draft</SelectItem>
                 </SelectContent>
               </Select>
+              {disbursementAmount >= 200000 && (
+                <p className="text-xs text-amber-600 mt-1">NEFT not available for amounts ≥ ₹2,00,000. RTGS is mandatory.</p>
+              )}
             </div>
-            {(disbursementMode === 'BANK_TRANSFER' || disbursementMode === 'NEFT' || disbursementMode === 'RTGS' || disbursementMode === 'UPI') && (
+            {(disbursementMode === 'NEFT' || disbursementMode === 'RTGS') && (
               <div className="space-y-4 border-t pt-4">
                 <div>
                   <Label>Account Number *</Label>

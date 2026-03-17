@@ -4,14 +4,24 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { UserRole } from '@/lib/types/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Banknote, Wallet, TrendingUp, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { dashboardApi, setApiToken } from '@/lib/api';
+import { Users, Banknote, Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, AlertCircle, Clock } from 'lucide-react';
+import { dashboardApi, setApiToken, approvalsApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils/formatters';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+
+// Checker roles - show pending approvals widget (BRD IMP-01)
+const CHECKER_ROLES: UserRole[] = [
+  UserRole.SENIOR_ACCOUNTANT,
+  UserRole.SOCIETY_ADMIN,
+  UserRole.PRESIDENT,
+];
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<{ memberCount: number; activeLoansOutstanding: number; totalSavings: number; totalDeposits: number } | null>(null);
   const [activities, setActivities] = useState<{ id: string; type: string; category: string; amount: number; memberName: string; processedAt: string }[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<{ count: number; byCategory?: Record<string, number> }>({ count: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,14 +31,34 @@ export default function DashboardPage() {
       setLoading(false);
       return;
     }
-    Promise.all([dashboardApi.getStats(token || undefined), dashboardApi.getActivity(10, token || undefined)])
-      .then(([statsRes, actRes]) => {
+    const fetchData = async () => {
+      try {
+        const [statsRes, actRes, approvalsRes] = await Promise.all([
+          dashboardApi.getStats(token || undefined),
+          dashboardApi.getActivity(10, token || undefined),
+          CHECKER_ROLES.includes(user?.role as UserRole)
+            ? approvalsApi.list({ status: 'pending' }, token || undefined)
+            : Promise.resolve(null),
+        ]);
         if (statsRes.stats) setStats(statsRes.stats);
         if (actRes.activities) setActivities(actRes.activities);
-      })
-      .catch(() => { })
-      .finally(() => setLoading(false));
-  }, [user?.tenantId]);
+        if (approvalsRes?.success && approvalsRes.pending) {
+          const pending = approvalsRes.pending as any[];
+          const byCategory: Record<string, number> = {};
+          pending.forEach((p: any) => {
+            const type = p.type || p.entityType || 'OTHER';
+            byCategory[type] = (byCategory[type] || 0) + 1;
+          });
+          setPendingApprovals({ count: pending.length, byCategory });
+        }
+      } catch {
+        // Ignore approval fetch errors
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [user?.tenantId, user?.role]);
 
   const kpiCards = stats
     ? [
@@ -87,6 +117,38 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-slide-up">
+      {/* IMP-01: Maker-checker pending queue widget — prominent for Checker roles */}
+      {CHECKER_ROLES.includes(user?.role as UserRole) && pendingApprovals.count > 0 && (
+        <Card className="border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+                <CardTitle className="text-lg">Pending Actions — Your Approval Required</CardTitle>
+              </div>
+              <Link href="/dashboard/approvals">
+                <Button size="sm" variant="outline">
+                  View Queue
+                </Button>
+              </Link>
+            </div>
+            <CardDescription>
+              {pendingApprovals.count} item{pendingApprovals.count !== 1 ? 's' : ''} awaiting your approval. Review within SLA.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex flex-wrap gap-3">
+              {pendingApprovals.byCategory && Object.entries(pendingApprovals.byCategory).map(([cat, cnt]) => (
+                <div key={cat} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 text-sm">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{cat.replace(/_/g, ' ')}: {cnt}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Welcome section */}
       <div className="space-y-1">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">

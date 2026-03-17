@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { formatCurrency } from '@/lib/utils/format';
-import { ArrowLeft, TrendingUp, Loader2, Calculator } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Loader2, Calculator, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { MemberPortalNav } from '@/components/member-portal-nav';
 import { motion } from 'framer-motion';
@@ -314,6 +314,44 @@ export default function FDRSimulatorPage() {
             </motion.div>
           )}
         </div>
+
+        {/* IMP-17: FDR Premature Closure Calculator */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          <Card className="glass border-white/20 dark:border-white/10 border-l-4 border-l-amber-500">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+                Premature Closure Calculator
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">Estimate payout if you close before maturity (penalty applies)</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <span className="text-muted-foreground">Principal</span>
+                <span className="font-medium">{formatCurrency(principalNum || 0)}</span>
+                <span className="text-muted-foreground">Maturity (full tenure)</span>
+                <span className="font-medium text-emerald-600">{formatCurrency(simulationResult?.maturityValue || localResult.maturityValue || 0)}</span>
+                <span className="text-muted-foreground">If closed today (pro-rata)</span>
+                <span className="font-medium">
+                  {principalNum > 0 && rateNum > 0 ? (() => {
+                    const penaltyRateReduction = 1; // 1% lower for premature
+                    const reducedRate = Math.max(0, rateNum - penaltyRateReduction);
+                    const simpleInterest = principalNum * (reducedRate / 100) * (tenureDays / 365);
+                    const netPayout = principalNum + Math.round(simpleInterest);
+                    return formatCurrency(netPayout);
+                  })() : '—'}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Premature closure typically pays 1% lower rate. Compare with maturity value above. TDS may apply.
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Info Card */}
         <motion.div

@@ -1219,6 +1219,20 @@ export const aiApi = {
       body: JSON.stringify(body),
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
+  // IMP-20: AI Audit Log Viewer (Compliance)
+  auditLog: (params?: { fromDate?: string; toDate?: string; feature?: string; overrideCategory?: string; modelVersion?: string; page?: number; limit?: number }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.fromDate) q.set("fromDate", params.fromDate);
+    if (params?.toDate) q.set("toDate", params.toDate);
+    if (params?.feature) q.set("feature", params.feature);
+    if (params?.overrideCategory) q.set("overrideCategory", params.overrideCategory);
+    if (params?.modelVersion) q.set("modelVersion", params.modelVersion);
+    if (params?.page) q.set("page", String(params.page));
+    if (params?.limit) q.set("limit", String(params.limit));
+    return api<{ success: boolean; logs: any[]; total: number; page: number; limit: number }>(`/ai/audit-log?${q}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    });
+  },
   // AI-018: Bias Audit
   biasAudit: (params?: { modelId?: string; period?: string }, token?: string) => {
     const q = new URLSearchParams();
@@ -1228,6 +1242,29 @@ export const aiApi = {
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     });
   },
+};
+
+// IMP-14: AI Anomaly Alerts (INT-012) — resolution workflow with reason codes
+export const anomalyAlertsApi = {
+  list: (params?: { limit?: number }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.limit) q.set("limit", String(params.limit));
+    return api<{ success: boolean; alerts: any[] }>(`/anomaly-alerts/pending${q.toString() ? "?" + q : ""}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    });
+  },
+  resolve: (id: string, body: { resolutionCode: string; resolutionNote: string }, token?: string) =>
+    api<{ success: boolean; message: string }>(`/anomaly-alerts/${id}/resolve`, {
+      method: "PUT",
+      body: JSON.stringify({ resolutionNote: `[${body.resolutionCode}] ${body.resolutionNote}` }),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  escalate: (id: string, body: { escalationReason: string }, token?: string) =>
+    api<{ success: boolean; message: string }>(`/anomaly-alerts/${id}/escalate`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
 };
 
 export const aiAlertsApi = {
@@ -1818,6 +1855,12 @@ export const loansApi = {
     }),
   get: (id: string, token?: string) =>
     api<{ success: boolean; loan: any }>(`/loans/${id}`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  payEmi: (loanId: string, body: { emiId: string; amount: number; remarks?: string }, token?: string) =>
+    api<{ success: boolean; emi: any; split: { principalPaid: number; interestPaid: number; penalPaid: number } }>(`/loans/${loanId}/emi/pay`, {
+      method: "POST",
+      body: JSON.stringify(body),
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
   eligibility: (memberId: string, token?: string) =>
