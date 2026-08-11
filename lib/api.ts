@@ -29,7 +29,7 @@ async function api<T>(
   return data as T;
 }
 
-// Auth (stub — use actual token from auth context)
+// Auth (stub â€” use actual token from auth context)
 export function setApiToken(token: string | null) {
   if (typeof window !== "undefined") {
     (window as any).__sahayog_token = token;
@@ -250,6 +250,32 @@ export const membersApi = {
     api<{ success: boolean; member: any }>(`/members/${id}`, {
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
+  getPhoto: (id: string, token?: string) =>
+    api<{ success: boolean; photoUrl?: string }>(`/members/${id}/photo/current`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  uploadPhoto: (id: string, file: File, token?: string) => {
+    const formData = new FormData();
+    formData.append("photo", file);
+    return fetch(`${API_BASE}/members/${id}/photo`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      body: formData,
+    }).then(r => r.json());
+  },
+  getSignature: (id: string, token?: string) =>
+    api<{ success: boolean; signatureUrl?: string }>(`/members/${id}/signature/current`, {
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  uploadSignature: (id: string, file: File, token?: string) => {
+    const formData = new FormData();
+    formData.append("signature", file);
+    return fetch(`${API_BASE}/members/${id}/signature`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      body: formData,
+    }).then(r => r.json());
+  },
   create: (body: Record<string, any>, token?: string) =>
     api<{ success: boolean; member: any }>("/members", {
       method: "POST",
@@ -266,6 +292,12 @@ export const membersApi = {
     reinitiate: (memberId: string, token?: string) =>
       api<{ success: boolean; message: string }>(`/members/${memberId}/kyc/reinitiate`, {
         method: "POST",
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    verify: (memberId: string, body: { status: "verified" | "rejected"; remarks?: string }, token?: string) =>
+      api<{ success: boolean; member: any }>(`/members/${memberId}/kyc/verify`, {
+        method: "POST",
+        body: JSON.stringify(body),
         headers: { Authorization: `Bearer ${token || getToken() || ""}` },
       }),
   },
@@ -1244,7 +1276,7 @@ export const aiApi = {
   },
 };
 
-// IMP-14: AI Anomaly Alerts (INT-012) — resolution workflow with reason codes
+// IMP-14: AI Anomaly Alerts (INT-012) â€” resolution workflow with reason codes
 export const anomalyAlertsApi = {
   list: (params?: { limit?: number }, token?: string) => {
     const q = new URLSearchParams();
@@ -1349,23 +1381,59 @@ export const approvalsApi = {
       body: JSON.stringify(body || {}),
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
+  approveLoanSanction: (id: string, body?: { comments?: string }, token?: string) =>
+    api<{ success: boolean; application: any }>(`/approvals/loan-sanction/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify(body || {}),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
+  rejectLoanSanction: (id: string, body?: { reason?: string }, token?: string) =>
+    api<{ success: boolean; application: any }>(`/approvals/loan-sanction/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify(body || {}),
+      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+    }),
   approveProduct: (id: string, body: { action: "APPROVE" | "REJECT"; reasonCode: string; reason?: string }, token?: string) =>
     api<{ success: boolean; product: any }>(`/approvals/product/${id}/approve`, {
       method: "POST",
       body: JSON.stringify(body),
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
-  approveScheme: (id: string, body: { action: "APPROVE" | "REJECT"; reasonCode: string; reason?: string }, token?: string) =>
-    api<{ success: boolean; scheme: any }>(`/approvals/scheme/${id}/approve`, {
-      method: "POST",
-      body: JSON.stringify(body),
-      headers: { Authorization: `Bearer ${token || getToken() || ""}` },
-    }),
-};
+    approveScheme: (id: string, body: { action: "APPROVE" | "REJECT"; reasonCode: string; reason?: string }, token?: string) =>
+      api<{ success: boolean; scheme: any }>(`/approvals/scheme/${id}/approve`, {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    approveSbAccount: (id: string, body?: { comments?: string }, token?: string) =>
+      api<{ success: boolean; account: any }>(`/approvals/sb/${id}/approve`, {
+        method: "POST",
+        body: JSON.stringify(body || {}),
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    rejectSbAccount: (id: string, body?: { reason?: string }, token?: string) =>
+      api<{ success: boolean; account: any }>(`/approvals/sb/${id}/reject`, {
+        method: "POST",
+        body: JSON.stringify(body || {}),
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    approveTransaction: (id: string, body?: { comments?: string }, token?: string) =>
+      api<{ success: boolean; transaction: any }>(`/approvals/transaction/${id}/approve`, {
+        method: "POST",
+        body: JSON.stringify(body || {}),
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+    rejectTransaction: (id: string, body?: { reason?: string }, token?: string) =>
+      api<{ success: boolean; transaction: any }>(`/approvals/transaction/${id}/reject`, {
+        method: "POST",
+        body: JSON.stringify(body || {}),
+        headers: { Authorization: `Bearer ${token || getToken() || ""}` },
+      }),
+  };
 
 // Loans
 // Module 8: Risk & Controls
-// Module 9 — Security & RBAC
+// Module 9 â€” Security & RBAC
 export const securityApi = {
   // SEC-001: RBAC Permissions
   permissions: {
@@ -2081,3 +2149,4 @@ export const interestApi = {
       headers: { Authorization: `Bearer ${token || getToken() || ""}` },
     }),
 };
+

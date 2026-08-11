@@ -184,15 +184,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Demo credentials */}
-              <div className="mt-6 p-4 bg-gradient-to-br from-blue-50/80 to-indigo-50/80 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl text-sm border border-blue-100 dark:border-blue-900/30">
-                <p className="font-semibold mb-2 text-foreground text-xs uppercase tracking-wider">Demo Credentials</p>
-                <div className="space-y-1">
-                  <p className="text-muted-foreground"><span className="font-medium text-foreground/80">Superadmin:</span> sdsiteadmin@sentientdigital.in</p>
-                  <p className="text-muted-foreground"><span className="font-medium text-foreground/80">Admin:</span> admin@sentientdigital.in</p>
-                  <p className="text-muted-foreground"><span className="font-medium text-foreground/80">Password:</span> Sentient1234@</p>
-                </div>
-              </div>
+
             </CardContent>
           </Card>
         </div>

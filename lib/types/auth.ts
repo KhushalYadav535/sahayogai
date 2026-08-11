@@ -10,6 +10,7 @@ export enum UserRole {
   COMPLIANCE_OFFICER = 'COMPLIANCE_OFFICER',
   AUDITOR = 'AUDITOR',
   MEMBER = 'MEMBER',
+  BRANCH_MANAGER = 'BRANCH_MANAGER',
 }
 
 // Permission categories
@@ -228,4 +229,21 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     Permission.ACCOUNT_VIEW, // Own accounts only
     Permission.REPORT_VIEW,  // Own statements
   ],
+  [UserRole.BRANCH_MANAGER]: [
+    Permission.MEMBER_VIEW,
+    Permission.MEMBER_CREATE,
+    Permission.MEMBER_EDIT,
+    Permission.ACCOUNT_VIEW,
+    Permission.ACCOUNT_CREATE,
+    Permission.ACCOUNT_DEPOSIT,
+    Permission.ACCOUNT_WITHDRAW,
+    Permission.LOAN_VIEW,
+    Permission.LOAN_CREATE,
+    Permission.LOAN_APPROVE,
+    Permission.LOAN_DISBURSE,
+    Permission.DEPOSIT_VIEW,
+    Permission.DEPOSIT_CREATE,
+    Permission.REPORT_VIEW,
+    Permission.REPORT_EXPORT,
+  ]
 };

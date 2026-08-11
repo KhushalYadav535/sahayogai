@@ -1,0 +1,83 @@
+[
+  {
+    "MIS Account No": "MIS-2024-0001",
+    "Member ID": "MEM-001",
+    "Start Date": "01-Feb-2024",
+    "Principal (₹)": "300000",
+    "Tenure (months)": "24",
+    "Rate %": "7.00%",
+    "Monthly Payout (₹)": 17.500000000000004,
+    "Annual Interest (₹)": 210.00000000000003,
+    "TDS?": "No",
+    "MIS Status": "ACTIVE",
+    "Test Purpose": "Standard MIS — annual int ₹21,000 < ₹40,000; no TDS"
+  },
+  {
+    "MIS Account No": "MIS-2024-0002",
+    "Member ID": "MEM-003",
+    "Start Date": "15-Mar-2024",
+    "Principal (₹)": "700000",
+    "Tenure (months)": "36",
+    "Rate %": "7.50%",
+    "Monthly Payout (₹)": 43.75,
+    "Annual Interest (₹)": 525,
+    "TDS?": "Yes",
+    "MIS Status": "ACTIVE",
+    "Test Purpose": "SC member — annual int ₹52,500 > ₹40,000 → TDS 10% at posting"
+  },
+  {
+    "MIS Account No": "MIS-2024-0003",
+    "Member ID": "MEM-009",
+    "Start Date": "01-Apr-2023",
+    "Principal (₹)": "1000000",
+    "Tenure (months)": "36",
+    "Rate %": "7.50%",
+    "Monthly Payout (₹)": 62.5,
+    "Annual Interest (₹)": 750,
+    "TDS?": "Yes",
+    "MIS Status": "ACTIVE",
+    "Test Purpose": "Large MIS — ₹75,000 annual → TDS; test atomic TDS deduction at posting"
+  },
+  {
+    "MIS Account No": "MIS-2024-0004",
+    "Member ID": "MEM-006",
+    "Start Date": "20-Jun-2024",
+    "Principal (₹)": "150000",
+    "Tenure (months)": "24",
+    "Rate %": "7.00%",
+    "Monthly Payout (₹)": 8.750000000000002,
+    "Annual Interest (₹)": 105.00000000000001,
+    "TDS?": "No",
+    "MIS Status": "ACTIVE",
+    "Test Purpose": "Small MIS — below TDS threshold; monthly payout test"
+  },
+  {
+    "MIS Account No": "MIS-2024-0005",
+    "Member ID": "MEM-005",
+    "Start Date": "01-Jan-2023",
+    "Principal (₹)": "500000",
+    "Tenure (months)": "24",
+    "Rate %": "7.50%",
+    "Monthly Payout (₹)": 31.25,
+    "Annual Interest (₹)": 375,
+    "TDS?": "Yes",
+    "MIS Status": "MATURED",
+    "Test Purpose": "Matured MIS — principal return + final interest + TDS test"
+  },
+  {
+    "MIS Account No": "MIS-2024-0006",
+    "Member ID": "MEM-013",
+    "Start Date": "01-May-2024",
+    "Principal (₹)": "400000",
+    "Tenure (months)": "36",
+    "Rate %": "7.00%",
+    "Monthly Payout (₹)": 23.33333333333334,
+    "Annual Interest (₹)": 280.00000000000006,
+    "TDS?": "No",
+    "MIS Status": "ACTIVE",
+    "Test Purpose": "KYC expired — monthly payout blocked? Test system behaviour"
+  },
+  {
+    "MIS Account No": "MIS-2024-0002 & 0003: TDS test — deducted ATOMICALLY at posting, NOT at accrual. Annual interest exceeds ₹40,000. TDS rate = 10% (platform-fixed). Form 16A generated."
+  }
+]

@@ -1,0 +1,107 @@
+[
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "Sheet",
+    "__EMPTY_1": "Description",
+    "__EMPTY_2": "Records",
+    "__EMPTY_3": "Module tested"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "01-Members",
+    "__EMPTY_1": "15 members covering all KYC states, joint accounts, minors, guardians, NPA members",
+    "__EMPTY_2": "15",
+    "__EMPTY_3": "Module 1 — Member Management"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "02-InterestSchemes",
+    "__EMPTY_1": "FDR/SB/RD/MIS/Loan schemes — DRAFT, ACTIVE, SUPERSEDED states; large & small delta changes",
+    "__EMPTY_2": "14",
+    "__EMPTY_3": "Module 16 — Interest Engine"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "03-SBAccounts",
+    "__EMPTY_1": "12 SB accounts across all lifecycle states; deposits, withdrawals, lien scenarios",
+    "__EMPTY_2": "12",
+    "__EMPTY_3": "Module 3 — Savings Accounts"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "04-FDRAccounts",
+    "__EMPTY_1": "10 FDR accounts — premature, maturity, TDS applicable, senior citizen premium",
+    "__EMPTY_2": "10",
+    "__EMPTY_3": "Module 5 — Deposit Management"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "05-RDAccounts",
+    "__EMPTY_1": "8 RD accounts — regular, missed instalment, maturity due",
+    "__EMPTY_2": "8",
+    "__EMPTY_3": "Module 5 — Deposit Management"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "06-MISAccounts",
+    "__EMPTY_1": "6 MIS accounts — TDS and non-TDS scenarios",
+    "__EMPTY_2": "6",
+    "__EMPTY_3": "Module 5 — Deposit Management"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "07-LoanAccounts",
+    "__EMPTY_1": "18 loan accounts — all stages: applied, sanctioned, active, overdue, NPA, closed",
+    "__EMPTY_2": "18",
+    "__EMPTY_3": "Module 4 — Loan Management"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "08-Transactions",
+    "__EMPTY_1": "40 transactions — deposits, withdrawals, NEFT, RTGS; above and below threshold",
+    "__EMPTY_2": "40",
+    "__EMPTY_3": "Module 6 — Financial Accounting"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "09-MakerChecker",
+    "__EMPTY_1": "30 pending/approved/rejected/escalated items across all transaction types",
+    "__EMPTY_2": "30",
+    "__EMPTY_3": "Section 2.4 — Maker-Checker"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "10-GLEntries",
+    "__EMPTY_1": "All 25 standard GL entry patterns with debit/credit accounts",
+    "__EMPTY_2": "25",
+    "__EMPTY_3": "Module 6 — GL & Accounting"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "11-EMISchedules",
+    "__EMPTY_1": "3 complete EMI schedules — reducing balance, flat rate, pre-EMI",
+    "__EMPTY_2": "3",
+    "__EMPTY_3": "INT-006 — EMI Engine"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "12-OverdueNPA",
+    "__EMPTY_1": "5 overdue accounts at different ageing buckets + provisioning data",
+    "__EMPTY_2": "5",
+    "__EMPTY_3": "INT-007 — Penal / NPA"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "13-AuditTrail",
+    "__EMPTY_1": "50 sample audit log entries covering all event types",
+    "__EMPTY_2": "50",
+    "__EMPTY_3": "INT-013 — Audit Trail"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "14-AIScores",
+    "__EMPTY_1": "15 loan appraisal AI scores — approve, override, reject scenarios",
+    "__EMPTY_2": "15",
+    "__EMPTY_3": "Section 2.3 — AI Engine"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "15-UserRoles",
+    "__EMPTY_1": "10 system users across all 9 roles; session and access data",
+    "__EMPTY_2": "10",
+    "__EMPTY_3": "Section 4 — RBAC"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "16-TestScenarios",
+    "__EMPTY_1": "30 end-to-end test scenarios with expected outcomes and pass/fail columns",
+    "__EMPTY_2": "30",
+    "__EMPTY_3": "All modules"
+  },
+  {
+    "Comprehensive test data for all modules | March 2026 | Confidential — Internal Use Only": "Blue text = hardcoded test inputs | Green text = expected results | Red text = error/reject scenarios | Yellow bg = pay attention"
+  }
+]

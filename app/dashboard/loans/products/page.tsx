@@ -108,6 +108,25 @@ export default function LoanProductsPage() {
     }
   };
 
+  const handleSubmitProduct = async (productId: string) => {
+    try {
+      const response = await loanProductsApi.submit(productId);
+      if (response.success) {
+        toast({
+          title: 'Success',
+          description: 'Product submitted for approval',
+        });
+        fetchProducts();
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to submit product',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -246,15 +265,27 @@ export default function LoanProductsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleViewProduct(product.id)}
+                          title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
                         {product.status === 'DRAFT' && (
-                          <Link href={`/dashboard/loans/products/${product.id}/edit`}>
-                            <Button variant="ghost" size="sm">
-                              <Edit className="w-4 h-4" />
+                          <>
+                            <Link href={`/dashboard/loans/products/${product.id}/edit`}>
+                              <Button variant="ghost" size="sm" title="Edit Draft">
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </Link>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              title="Submit for Approval"
+                              onClick={() => handleSubmitProduct(product.id)}
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <CheckCircle className="w-4 h-4" />
                             </Button>
-                          </Link>
+                          </>
                         )}
                         {/* BRD v5.0 LN-P07: Version History Link */}
                         <Link href={`/dashboard/loans/products/${product.id}/versions`}>

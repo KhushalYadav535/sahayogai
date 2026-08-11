@@ -1,0 +1,205 @@
+[
+  {
+    "#": "1",
+    "Event": "SB account opening",
+    "Description": "Member deposits opening balance",
+    "Debit Account": "Cash / Cheque Clearing A/c",
+    "Credit Account": "Member SB Account",
+    "Regulatory Basis": "RBI KYC"
+  },
+  {
+    "#": "2",
+    "Event": "SB cash withdrawal (approved)",
+    "Description": "Member withdraws cash",
+    "Debit Account": "Member SB Account",
+    "Credit Account": "Cash on Hand A/c",
+    "Regulatory Basis": "Standard"
+  },
+  {
+    "#": "3",
+    "Event": "SB cash deposit",
+    "Description": "Member deposits cash",
+    "Debit Account": "Cash on Hand A/c",
+    "Credit Account": "Member SB Account",
+    "Regulatory Basis": "Standard"
+  },
+  {
+    "#": "4",
+    "Event": "SB daily interest accrual",
+    "Description": "Nightly auto-accrual (INT-003)",
+    "Debit Account": "Interest Expense A/c",
+    "Credit Account": "Accrued Interest Payable A/c",
+    "Regulatory Basis": "Platform rule"
+  },
+  {
+    "#": "5",
+    "Event": "SB half-yearly interest credit",
+    "Description": "Periodic posting (INT-009)",
+    "Debit Account": "Accrued Interest Payable A/c",
+    "Credit Account": "Member SB Account",
+    "Regulatory Basis": "Standard"
+  },
+  {
+    "#": "6",
+    "Event": "NEFT outward transfer",
+    "Description": "Member sends money via NEFT",
+    "Debit Account": "Member SB Account",
+    "Credit Account": "NEFT / RTGS Clearing A/c",
+    "Regulatory Basis": "RBI NEFT"
+  },
+  {
+    "#": "7",
+    "Event": "RTGS outward transfer",
+    "Description": "Member sends via RTGS (≥₹2L)",
+    "Debit Account": "Member SB Account",
+    "Credit Account": "NEFT / RTGS Clearing A/c",
+    "Regulatory Basis": "RBI RTGS"
+  },
+  {
+    "#": "8",
+    "Event": "Internal transfer",
+    "Description": "Between SB accounts (same society)",
+    "Debit Account": "Member SB Account (from)",
+    "Credit Account": "Member SB Account (to)",
+    "Regulatory Basis": "Standard"
+  },
+  {
+    "#": "9",
+    "Event": "Demand draft issued",
+    "Description": "DD created for member",
+    "Debit Account": "Member SB Account",
+    "Credit Account": "DD Payable A/c",
+    "Regulatory Basis": "Standard"
+  },
+  {
+    "#": "10",
+    "Event": "FDR opening",
+    "Description": "Fixed deposit booked",
+    "Debit Account": "Cash / SB Account / Cheque",
+    "Credit Account": "FDR Account (liability)",
+    "Regulatory Basis": "Standard"
+  },
+  {
+    "#": "11",
+    "Event": "FDR daily accrual",
+    "Description": "Compound interest accrual",
+    "Debit Account": "Interest Expense A/c",
+    "Credit Account": "Accrued Interest Payable A/c",
+    "Regulatory Basis": "Standard"
+  },
+  {
+    "#": "12",
+    "Event": "FDR quarterly posting",
+    "Description": "Interest credited to SB (no TDS)",
+    "Debit Account": "Accrued Interest Payable A/c",
+    "Credit Account": "Member SB Account",
+    "Regulatory Basis": "Standard"
+  },
+  {
+    "#": "13",
+    "Event": "FDR posting with TDS",
+    "Description": "Interest credited; TDS deducted atomically",
+    "Debit Account": "Accrued Interest Payable A/c",
+    "Credit Account": "Member SB A/c (net) + TDS Payable A/c",
+    "Regulatory Basis": "IT Act Sec 194A"
+  },
+  {
+    "#": "14",
+    "Event": "FDR premature closure",
+    "Description": "Principal + interest (net of penalty) to SB",
+    "Debit Account": "FDR Account + Accrued Int. Payable",
+    "Credit Account": "Member SB Account",
+    "Regulatory Basis": "Standard"
+  },
+  {
+    "#": "15",
+    "Event": "FDR pre-closure penalty",
+    "Description": "Penalty income recognised",
+    "Debit Account": "Member SB Account",
+    "Credit Account": "Penalty Income A/c",
+    "Regulatory Basis": "Standard"
+  },
+  {
+    "#": "16",
+    "Event": "Loan disbursement",
+    "Description": "Funds released to member",
+    "Debit Account": "Loan Account (asset)",
+    "Credit Account": "Cash / NEFT Clearing / Member SB A/c",
+    "Regulatory Basis": "Standard"
+  },
+  {
+    "#": "17",
+    "Event": "Loan processing fee",
+    "Description": "Fee charged at disbursement",
+    "Debit Account": "Member SB Account",
+    "Credit Account": "Processing Fee Income A/c",
+    "Regulatory Basis": "Standard"
+  },
+  {
+    "#": "18",
+    "Event": "Loan normal interest accrual",
+    "Description": "Daily reducing balance accrual",
+    "Debit Account": "Interest Receivable A/c",
+    "Credit Account": "Interest Income A/c",
+    "Regulatory Basis": "Standard"
+  },
+  {
+    "#": "19",
+    "Event": "Loan PENAL interest accrual",
+    "Description": "Daily penal — SEPARATE head",
+    "Debit Account": "Penal Interest Receivable A/c",
+    "Credit Account": "Penal Interest Income A/c",
+    "Regulatory Basis": "RBI RBI/2023-24/53"
+  },
+  {
+    "#": "20",
+    "Event": "Loan repayment — no penal",
+    "Description": "EMI received; normal allocation",
+    "Debit Account": "Cash / Member SB A/c",
+    "Credit Account": "Interest Receivable + Loan A/c",
+    "Regulatory Basis": "INT-007"
+  },
+  {
+    "#": "21",
+    "Event": "Loan repayment — with penal",
+    "Description": "Penal cleared first (mandatory order)",
+    "Debit Account": "Cash / Member SB A/c",
+    "Credit Account": "Penal Int. Rec. → Int. Rec. → Loan A/c",
+    "Regulatory Basis": "INT-007 mandatory"
+  },
+  {
+    "#": "22",
+    "Event": "NPA provisioning (Day 90)",
+    "Description": "10% provision booked (SUB_STANDARD)",
+    "Debit Account": "Provision for Bad Debts (P&L)",
+    "Credit Account": "Provision A/c (Balance Sheet)",
+    "Regulatory Basis": "RBI Prudential Norms"
+  },
+  {
+    "#": "23",
+    "Event": "NPA provision reversal",
+    "Description": "Full recovery — provision reversed",
+    "Debit Account": "Provision A/c (Balance Sheet)",
+    "Credit Account": "Provision for Bad Debts (P&L)",
+    "Regulatory Basis": "RBI Prudential Norms"
+  },
+  {
+    "#": "24",
+    "Event": "Loan write-off",
+    "Description": "DOUBTFUL — 100% write-off",
+    "Debit Account": "Provision A/c",
+    "Credit Account": "Loan Account",
+    "Regulatory Basis": "RBI — legally recoverable"
+  },
+  {
+    "#": "25",
+    "Event": "MIS monthly payout + TDS",
+    "Description": "Monthly income scheme credit",
+    "Debit Account": "Accrued Interest Payable A/c",
+    "Credit Account": "Member SB A/c (net) + TDS Payable A/c",
+    "Regulatory Basis": "IT Act Sec 194A"
+  },
+  {
+    "#": "CRITICAL: GL entries 19 and 22 — Penal Interest Receivable is ALWAYS separate from Loan Account. NEVER merge. Platform-enforced. | Entry 21: allocation order is FIXED: Penal → Interest → Principal"
+  }
+]

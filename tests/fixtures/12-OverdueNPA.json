@@ -1,0 +1,143 @@
+[
+  {
+    "Loan Account": "LN-2024-0014",
+    "Member": "Meena Joshi",
+    "Outstanding (₹)": "75000",
+    "Overdue Days": "15",
+    "Bucket": "1–30 days",
+    "Daily Penal (₹)": 49.31506849315068,
+    "Penal Accrued (₹)": 739.7260273972603,
+    "Classification": "STANDARD",
+    "Provision %": "0%",
+    "Provision (₹)": "0",
+    "Test Scenario": "Day-15: early collection; AI NPA flag 72% probability; Loan Officer call initiated"
+  },
+  {
+    "Loan Account": "LN-2024-0015",
+    "Member": "Meena Joshi",
+    "Outstanding (₹)": "240000",
+    "Overdue Days": "45",
+    "Bucket": "31–60 days",
+    "Daily Penal (₹)": 157.8082191780822,
+    "Penal Accrued (₹)": 7101.369863013699,
+    "Classification": "STANDARD",
+    "Provision %": "0%",
+    "Provision (₹)": "0",
+    "Test Scenario": "Day-45: guarantor notified; field visit done; moratorium being explored"
+  },
+  {
+    "Loan Account": "LN-2024-0016",
+    "Member": "Ramesh Patil",
+    "Outstanding (₹)": "175000",
+    "Overdue Days": "75",
+    "Bucket": "61–89 days",
+    "Daily Penal (₹)": 115.06849315068493,
+    "Penal Accrued (₹)": 8630.13698630137,
+    "Classification": "STANDARD",
+    "Provision %": "0%",
+    "Provision (₹)": "0",
+    "Test Scenario": "Day-75: critical zone; 15 days to NPA; President moratorium request pending"
+  },
+  {
+    "Loan Account": "LN-2026-0031",
+    "Member": "Ramesh Patil",
+    "Outstanding (₹)": "293205",
+    "Overdue Days": "95",
+    "Bucket": "90+ days (NPA)",
+    "Daily Penal (₹)": 192.79232876712328,
+    "Penal Accrued (₹)": 18315.271232876712,
+    "Classification": "SUB_STANDARD",
+    "Provision %": "10%",
+    "Provision (₹)": 29320.5,
+    "Test Scenario": "KEY: Day-95 NPA — SUB_STANDARD; 10% provision booked; normal int accrual STOPPED"
+  },
+  {
+    "Loan Account": "LN-2024-0018",
+    "Member": "Vikram Rao",
+    "Outstanding (₹)": "380000",
+    "Overdue Days": "400",
+    "Bucket": "90+ days (NPA)",
+    "Daily Penal (₹)": 249.86301369863014,
+    "Penal Accrued (₹)": 99945.20547945205,
+    "Classification": "DOUBTFUL",
+    "Provision %": "100%",
+    "Provision (₹)": "380000",
+    "Test Scenario": "Day-400 DOUBTFUL: 100% provision; write-off scenario; legally recoverable"
+  },
+  {
+    "Loan Account": "Penal interest accumulation — LN-2026-0031 (₹2,93,205 outstanding @ 24% p.a.)"
+  },
+  {
+    "Loan Account": "Day",
+    "Member": "Daily Penal (₹)",
+    "Outstanding (₹)": "Cumulative Penal (₹)",
+    "Overdue Days": "Total to Regularise (₹)",
+    "Bucket": "Note"
+  },
+  {
+    "Loan Account": 1,
+    "Member": 193,
+    "Outstanding (₹)": 193,
+    "Overdue Days": 10363,
+    "Bucket": "Day 1 — penal starts; Loan Officer notified; auto-SMS sent"
+  },
+  {
+    "Loan Account": 7,
+    "Member": 193,
+    "Outstanding (₹)": 1351,
+    "Overdue Days": 11521,
+    "Bucket": "Day 7 — SMS + email reminder; penal ₹1,379"
+  },
+  {
+    "Loan Account": 15,
+    "Member": 193,
+    "Outstanding (₹)": 2895,
+    "Overdue Days": 13065,
+    "Bucket": "Day 15 — guarantor notified; penal ₹2,955"
+  },
+  {
+    "Loan Account": 30,
+    "Member": 193,
+    "Outstanding (₹)": 5790,
+    "Overdue Days": 15960,
+    "Bucket": "Day 30 — 1st bucket end; penal ₹5,910"
+  },
+  {
+    "Loan Account": 45,
+    "Member": 193,
+    "Outstanding (₹)": 8685,
+    "Overdue Days": 29025,
+    "Bucket": "Day 45 — 2nd missed EMI; 2 EMIs overdue"
+  },
+  {
+    "Loan Account": 60,
+    "Member": 193,
+    "Outstanding (₹)": 11580,
+    "Overdue Days": 31920,
+    "Bucket": "Day 60 — final warning; 30 days to NPA"
+  },
+  {
+    "Loan Account": 75,
+    "Member": 193,
+    "Outstanding (₹)": 14475,
+    "Overdue Days": 44985,
+    "Bucket": "Day 75 — critical; moratorium last chance"
+  },
+  {
+    "Loan Account": 90,
+    "Member": 193,
+    "Outstanding (₹)": 17370,
+    "Overdue Days": 47880,
+    "Bucket": "Day 90 — NPA threshold; provisioning triggered; normal int STOPS"
+  },
+  {
+    "Loan Account": 95,
+    "Member": 193,
+    "Outstanding (₹)": 18335,
+    "Overdue Days": 48845,
+    "Bucket": "Day 95 (current) — SUB_STANDARD; 10% provision ₹29,321 booked"
+  },
+  {
+    "Loan Account": "PLATFORM RULE: Penal interest (24% p.a.) is NEVER compounded into principal. It accumulates in Penal Interest Receivable A/c ONLY. Displayed separately on all screens. On repayment: Penal cleared FIRST, then Interest, then Principal."
+  }
+]

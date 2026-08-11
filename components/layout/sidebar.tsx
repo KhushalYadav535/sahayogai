@@ -75,7 +75,7 @@ const navigationItems: NavItem[] = [
     children: [
       { label: 'All Members', href: '/dashboard/members', icon: <Users className="w-4 h-4" /> },
       { label: 'Minor Conversion', href: '/dashboard/members/minor-conversion', icon: <UserCheck className="w-4 h-4" /> },
-      { label: 'Photo Approvals', href: '/dashboard/members/photo-approvals', icon: <Camera className="w-4 h-4" />, requiredRoles: [UserRole.SECRETARY, UserRole.SOCIETY_ADMIN, UserRole.PRESIDENT] },
+      { label: 'Document Approvals', href: '/dashboard/members/photo-approvals', icon: <Camera className="w-4 h-4" />, requiredRoles: [UserRole.SECRETARY, UserRole.SOCIETY_ADMIN, UserRole.PRESIDENT] },
     ],
   },
   {

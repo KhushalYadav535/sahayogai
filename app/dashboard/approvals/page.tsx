@@ -87,6 +87,8 @@ export default function ApprovalsPage() {
         await approvalsApi.approveVoucher(selectedApproval.id, { comments })
       } else if (selectedApproval.source === 'loan_application') {
         await approvalsApi.approveLoan(selectedApproval.id, { comments })
+      } else if (selectedApproval.source === 'loan_sanction') {
+        await approvalsApi.approveLoanSanction(selectedApproval.id, { comments })
       } else if (selectedApproval.source === 'loan_product') {
         await approvalsApi.approveProduct(selectedApproval.id, {
           action: 'APPROVE',
@@ -99,6 +101,10 @@ export default function ApprovalsPage() {
           reasonCode: comments || 'APPROVED_AS_IS',
           reason: comments,
         })
+      } else if (selectedApproval.source === 'sb_account') {
+        await approvalsApi.approveSbAccount(selectedApproval.id, { comments })
+      } else if (selectedApproval.source === 'transaction') {
+        await approvalsApi.approveTransaction(selectedApproval.id, { comments })
       } else {
         throw new Error('Unknown approval source')
       }
@@ -126,6 +132,8 @@ export default function ApprovalsPage() {
         await approvalsApi.rejectVoucher(selectedApproval.id, { reason: rejectionReason })
       } else if (selectedApproval.source === 'loan_application') {
         await approvalsApi.rejectLoan(selectedApproval.id, { reason: rejectionReason })
+      } else if (selectedApproval.source === 'loan_sanction') {
+        await approvalsApi.rejectLoanSanction(selectedApproval.id, { reason: rejectionReason })
       } else if (selectedApproval.source === 'loan_product') {
         await approvalsApi.approveProduct(selectedApproval.id, {
           action: 'REJECT',
@@ -138,6 +146,10 @@ export default function ApprovalsPage() {
           reasonCode: rejectionReason,
           reason: rejectionReason,
         })
+      } else if (selectedApproval.source === 'sb_account') {
+        await approvalsApi.rejectSbAccount(selectedApproval.id, { reason: rejectionReason })
+      } else if (selectedApproval.source === 'transaction') {
+        await approvalsApi.rejectTransaction(selectedApproval.id, { reason: rejectionReason })
       } else {
         throw new Error('Unknown approval source')
       }

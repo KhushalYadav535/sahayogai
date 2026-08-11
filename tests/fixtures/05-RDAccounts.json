@@ -1,0 +1,109 @@
+[
+  {
+    "RD Account No": "RD-2024-0001",
+    "Member ID": "MEM-001",
+    "Start Date": "01-Apr-2024",
+    "Monthly Instalment (₹)": "5000",
+    "Tenure (months)": "24",
+    "Rate %": "6.50%",
+    "Instalments Paid": "11",
+    "Instalments Missed": "0",
+    "Maturity Value (₹)": 55032.77971020978,
+    "RD Status": "ACTIVE",
+    "Test Purpose": "Standard RD — 24-month; test accrual on paid instalments"
+  },
+  {
+    "RD Account No": "RD-2024-0002",
+    "Member ID": "MEM-006",
+    "Start Date": "01-Jun-2023",
+    "Monthly Instalment (₹)": "10000",
+    "Tenure (months)": "36",
+    "Rate %": "6.50%",
+    "Instalments Paid": "21",
+    "Instalments Missed": "2",
+    "Maturity Value (₹)": 210239.00443502396,
+    "RD Status": "ACTIVE",
+    "Test Purpose": "2 missed instalments — test penalty accrual and late-instalment GL"
+  },
+  {
+    "RD Account No": "RD-2024-0003",
+    "Member ID": "MEM-002",
+    "Start Date": "01-Jan-2024",
+    "Monthly Instalment (₹)": "3000",
+    "Tenure (months)": "12",
+    "Rate %": "6.50%",
+    "Instalments Paid": "12",
+    "Instalments Missed": "0",
+    "Maturity Value (₹)": 36023.40697250885,
+    "RD Status": "MATURITY_DUE",
+    "Test Purpose": "RD matured — test maturity posting and GL closure entries"
+  },
+  {
+    "RD Account No": "RD-2024-0004",
+    "Member ID": "MEM-009",
+    "Start Date": "01-Aug-2022",
+    "Monthly Instalment (₹)": "20000",
+    "Tenure (months)": "36",
+    "Rate %": "6.50%",
+    "Instalments Paid": "36",
+    "Instalments Missed": "0",
+    "Maturity Value (₹)": 721405.3316923745,
+    "RD Status": "CLOSED",
+    "Test Purpose": "RD fully paid — test closed account immutability"
+  },
+  {
+    "RD Account No": "RD-2024-0005",
+    "Member ID": "MEM-013",
+    "Start Date": "01-Mar-2024",
+    "Monthly Instalment (₹)": "8000",
+    "Tenure (months)": "24",
+    "Rate %": "6.50%",
+    "Instalments Paid": "8",
+    "Instalments Missed": "3",
+    "Maturity Value (₹)": 64027.73859168075,
+    "RD Status": "ACTIVE",
+    "Test Purpose": "KYC expired member — 3 missed, heavy penalty; test KYC re-validation alert"
+  },
+  {
+    "RD Account No": "RD-2024-0006",
+    "Member ID": "MEM-004",
+    "Start Date": "01-Oct-2024",
+    "Monthly Instalment (₹)": "2500",
+    "Tenure (months)": "24",
+    "Rate %": "6.50%",
+    "Instalments Paid": "5",
+    "Instalments Missed": "0",
+    "Maturity Value (₹)": 12503.385783440004,
+    "RD Status": "ACTIVE",
+    "Test Purpose": "KYC pending — test that standing instruction from SB is blocked"
+  },
+  {
+    "RD Account No": "RD-2024-0007",
+    "Member ID": "MEM-005",
+    "Start Date": "01-Feb-2024",
+    "Monthly Instalment (₹)": "15000",
+    "Tenure (months)": "36",
+    "Rate %": "6.50%",
+    "Instalments Paid": "13",
+    "Instalments Missed": "1",
+    "Maturity Value (₹)": 195137.357135427,
+    "RD Status": "ACTIVE",
+    "Test Purpose": "1 missed instalment — test penal on late instalment, auto-debit test"
+  },
+  {
+    "RD Account No": "RD-2024-0008",
+    "Member ID": "MEM-003",
+    "Start Date": "01-May-2023",
+    "Monthly Instalment (₹)": "12000",
+    "Tenure (months)": "36",
+    "Rate %": "6.50%",
+    "Instalments Paid": "22",
+    "Instalments Missed": "0",
+    "Maturity Value (₹)": 264314.7789933798,
+    "RD Status": "ACTIVE",
+    "Test Purpose": "Senior citizen RD — note: no SC premium on RD (only FDR). Test that SC premium is NOT applied."
+  },
+  {
+    "RD Account No": "RD-2024-0002 & 0007: missed instalment penalty test | RD-2024-0003: maturity posting test | RD-2024-0008: senior citizen RD — SC premium does NOT apply to RD (FDR only)"
+  }
+]

@@ -16,6 +16,7 @@ const ROLE_MAP: Record<string, UserRole> = {
   compliance_officer: UserRole.COMPLIANCE_OFFICER,
   auditor: UserRole.AUDITOR,
   member: UserRole.MEMBER,
+  branch_manager: UserRole.BRANCH_MANAGER,
   staff: UserRole.ACCOUNTANT, // legacy alias
 };
 

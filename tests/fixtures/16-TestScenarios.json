@@ -1,0 +1,275 @@
+[
+  {
+    "Test ID": "TS-001",
+    "Module": "Maker-Checker",
+    "Scenario": "Maker submits, Checker approves — SB account opening",
+    "Steps": "1. Maker enters SB account for MEM-001. 2. Submits. 3. Checker reviews. 4. Checker approves with reason code.",
+    "Expected Result": "Status → APPROVED. GL: Dr Cash · Cr SB A/c. Audit entry in INT-013.",
+    "Test Data Used": "MEM-001, MC-003",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-002",
+    "Module": "Maker-Checker",
+    "Scenario": "SLA breach → auto-escalation",
+    "Steps": "1. Maker submits scheme SCH-LN-006. 2. Wait 4+ hours without Checker action. 3. Check escalation.",
+    "Expected Result": "Status → ESCALATED. P1 alert to President. Dashboard shows breach.",
+    "Test Data Used": "MC-002",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-003",
+    "Module": "Maker-Checker",
+    "Scenario": "Same-user block test",
+    "Steps": "1. USR-001 (Arjun) submits item. 2. USR-001 attempts to approve own submission.",
+    "Expected Result": "System REJECTS: 'Maker and Checker must be different users'. Session binding enforced.",
+    "Test Data Used": "MC-030, USR-001",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-004",
+    "Module": "Interest Scheme",
+    "Scenario": "FDR scheme approval — delta >0.5% → President notified",
+    "Steps": "1. Submit SCH-FDR-003 (avg delta 0.62%). 2. Checker reviews side-by-side. 3. Approve.",
+    "Expected Result": "President receives oversight notification. Checker approves. Scheme → ACTIVE.",
+    "Test Data Used": "SCH-FDR-003",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-005",
+    "Module": "Interest Scheme",
+    "Scenario": "FDR rate auto-fetch on tenure entry",
+    "Steps": "1. Open new FDR for MEM-003. 2. Enter tenure 30 months. 3. Check rate field.",
+    "Expected Result": "Rate auto-populates 7.75% (from 12–36m slab). 'Rate locked at booking' notice shown.",
+    "Test Data Used": "SCH-FDR-002, MEM-003",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-006",
+    "Module": "Interest Scheme",
+    "Scenario": "Scheme rejection path",
+    "Steps": "1. Submit SCH-FDR-004. 2. Checker selects rejection reason. 3. Rejects.",
+    "Expected Result": "Status → REJECTED. Reason code logged. Returned to Maker. Scheme not activated.",
+    "Test Data Used": "SCH-FDR-004",
+    "Priority": "Must Have"
+  },
+  {
+    "Test ID": "TS-007",
+    "Module": "FDR",
+    "Scenario": "Premature FDR closure — penalty + no TDS",
+    "Steps": "1. Open FDR-2024-0031 (14/36 months). 2. Initiate closure. 3. Verify calculation. 4. Checker approves.",
+    "Expected Result": "Net payout ₹5,36,458. Penalty 1% applied. TDS = NIL (annual int ₹36,250 < ₹40,000).",
+    "Test Data Used": "FDR-2024-0031",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-008",
+    "Module": "FDR",
+    "Scenario": "FDR closure — TDS deducted atomically",
+    "Steps": "1. Close FDR-2024-0003 (Kavita Kulkarni, annual int ₹51,562). 2. Verify TDS.",
+    "Expected Result": "TDS ₹5,156 (10%) deducted atomically at posting. Net credited to SB. TDS Payable A/c credited.",
+    "Test Data Used": "FDR-2024-0003",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-009",
+    "Module": "FDR",
+    "Scenario": "Senior citizen premium applied",
+    "Steps": "1. Open FDR for MEM-003 (age 64). 2. Enter tenure 24 months. 3. Check rate.",
+    "Expected Result": "Rate = scheme rate + 0.50% SC premium. Rate locked at booking date.",
+    "Test Data Used": "MEM-003, SCH-FDR-002",
+    "Priority": "Must Have"
+  },
+  {
+    "Test ID": "TS-010",
+    "Module": "Cash Txn",
+    "Scenario": "Withdrawal above threshold — signature verification",
+    "Steps": "1. Enter TXN-002 (₹75,000 withdrawal). 2. Submit. 3. Checker: signature panel appears. 4. Verify.",
+    "Expected Result": "Non-dismissible signature panel. Both 'match' and 'mismatch' paths tested.",
+    "Test Data Used": "TXN-002, MEM-002",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-011",
+    "Module": "Cash Txn",
+    "Scenario": "Signature REJECTED → cash blocked",
+    "Steps": "1. Enter cash withdrawal for MEM-010 (signature rejected). 2. Attempt to process.",
+    "Expected Result": "Transaction BLOCKED before MC even starts. Alert to Society Admin.",
+    "Test Data Used": "MEM-010, TXN-011",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-012",
+    "Module": "Transfer",
+    "Scenario": "RTGS enforcement above ₹2 lakh",
+    "Steps": "1. Enter TXN-007 (₹2,00,000 NEFT). 2. Check mode field.",
+    "Expected Result": "System shows warning: 'NEFT not available above ₹2,00,000. Select RTGS.' NEFT option greyed.",
+    "Test Data Used": "TXN-007",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-013",
+    "Module": "Transfer",
+    "Scenario": "NEFT transfer — GL entries",
+    "Steps": "1. Enter TXN-006 (₹1,20,000 NEFT). 2. Submit. 3. Checker approves.",
+    "Expected Result": "GL: Dr SB A/c ₹1,20,000 · Cr NEFT Clearing A/c ₹1,20,000. Batch queued.",
+    "Test Data Used": "TXN-006",
+    "Priority": "Must Have"
+  },
+  {
+    "Test ID": "TS-014",
+    "Module": "Loan",
+    "Scenario": "AI score above threshold — override path",
+    "Steps": "1. Open LN-APP-0003 (score 0.72). 2. Enter override category: GUARANTOR_STRENGTH. 3. Enter narrative. 4. Proceed.",
+    "Expected Result": "Override logged with category code + narrative in AI_AUDIT_LOG. Application proceeds.",
+    "Test Data Used": "LN-APP-0003, AUD-005",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-015",
+    "Module": "Loan",
+    "Scenario": "KYC pending → loan application blocked",
+    "Steps": "1. Attempt loan for MEM-004 (KYC PENDING). 2. Check eligibility screen.",
+    "Expected Result": "Application blocked: 'KYC not verified'. Loan Officer cannot proceed.",
+    "Test Data Used": "MEM-004, LN-APP-0001",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-016",
+    "Module": "Loan",
+    "Scenario": "6-gate pre-disbursement check — gate blocking",
+    "Steps": "1. Open LN-PENDING-01. 2. Check gate status. 3. Gate 2 blocked. 4. Attempt to disburse.",
+    "Expected Result": "Disburse button DISABLED. Gate 2 shows: 'Sanction not acknowledged — click to resolve.'",
+    "Test Data Used": "LN-PENDING-01, MC-015",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-017",
+    "Module": "Loan",
+    "Scenario": "Full loan disbursement — NEFT",
+    "Steps": "1. Clear all 6 gates for LN-2026-0031. 2. Submit (Maker). 3. Checker approves. 4. Verify GL + EMI.",
+    "Expected Result": "GL: Dr Loan A/c · Cr NEFT Clearing. EMI schedule activated. Reminder Engine triggered.",
+    "Test Data Used": "LN-2026-0031, TXN-019",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-018",
+    "Module": "Loan",
+    "Scenario": "EMI repayment — penal allocation first",
+    "Steps": "1. Enter repayment TXN-013 (₹15,000 partial) for NPA account. 2. Check allocation preview.",
+    "Expected Result": "Allocation: Penal interest ₹18,715 → Interest → Principal. Penal cleared first. Preview visible to Maker.",
+    "Test Data Used": "TXN-013, LN-2026-0031",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-019",
+    "Module": "Loan",
+    "Scenario": "NPA classification at Day 90",
+    "Steps": "1. Simulate Day 90 for LN-2026-0031. 2. Check system action.",
+    "Expected Result": "Account → SUB_STANDARD. Provision ₹29,321 booked. Normal interest STOPPED. CIBIL queued.",
+    "Test Data Used": "LN-2026-0031, AUD-001",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-020",
+    "Module": "Loan",
+    "Scenario": "Penal interest never in principal",
+    "Steps": "1. Check LN-2026-0031 balance sheet. 2. Verify Penal Receivable vs Loan A/c.",
+    "Expected Result": "Penal Interest Receivable is SEPARATE from Loan Account balance at all times.",
+    "Test Data Used": "LN-2026-0031",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-021",
+    "Module": "Loan",
+    "Scenario": "DOUBTFUL loan write-off",
+    "Steps": "1. Process write-off for LN-2024-0018 (400 days overdue). 2. Verify GL.",
+    "Expected Result": "GL: Dr Provision A/c ₹3,80,000 · Cr Loan A/c ₹3,80,000. Loan legally recoverable.",
+    "Test Data Used": "LN-2024-0018, AUD-028",
+    "Priority": "Must Have"
+  },
+  {
+    "Test ID": "TS-022",
+    "Module": "GL",
+    "Scenario": "Day-end accrual — all products",
+    "Steps": "1. Run day-end job. 2. Check each product accrual. 3. Check anomaly detection.",
+    "Expected Result": "SB/FDR/RD/MIS/Loan normal/Loan penal all accrued. AI anomaly check: 0 outliers.",
+    "Test Data Used": "AUD-029",
+    "Priority": "Must Have"
+  },
+  {
+    "Test ID": "TS-023",
+    "Module": "GL",
+    "Scenario": "Atomic GL posting — rollback on failure",
+    "Steps": "1. Initiate disbursement. 2. Simulate Reminder Engine failure. 3. Check GL.",
+    "Expected Result": "GL entries roll back. Disbursement not posted. Checker shown error. No partial posting.",
+    "Test Data Used": "LN-PENDING-01",
+    "Priority": "Must Have"
+  },
+  {
+    "Test ID": "TS-024",
+    "Module": "MIS/TDS",
+    "Scenario": "MIS payout with TDS — atomic deduction",
+    "Steps": "1. Process MIS-2024-0002 monthly payout (annual int ₹52,500). 2. Verify TDS.",
+    "Expected Result": "TDS ₹437.50 deducted in same atomic transaction. Dr Member SB · Cr TDS Payable. Not at accrual.",
+    "Test Data Used": "MIS-2024-0002, TXN-024",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "TS-025",
+    "Module": "Members",
+    "Scenario": "Photo upload maker-checker",
+    "Steps": "1. Secretary (USR-006) uploads photo for MEM-014. 2. Submit. 3. Admin (USR-005) approves.",
+    "Expected Result": "Photo → APPROVED. SHA-256 hash stored. Watermark embedded. Onboarding unblocked.",
+    "Test Data Used": "MEM-014, MC-020",
+    "Priority": "Must Have"
+  },
+  {
+    "Test ID": "TS-026",
+    "Module": "Members",
+    "Scenario": "Blank signature rejection",
+    "Steps": "1. Upload near-blank signature (ink coverage 2%) for MEM-010. 2. Submit.",
+    "Expected Result": "System REJECTS before submission: 'Ink coverage 2% below minimum 5% threshold'. Not submitted.",
+    "Test Data Used": "MEM-010, MC-010",
+    "Priority": "Must Have"
+  },
+  {
+    "Test ID": "TS-027",
+    "Module": "Members",
+    "Scenario": "Minor account — guardian rules",
+    "Steps": "1. Process cash deposit TXN-021 for SB-2024-0008 (minor MEM-008). 2. Check guardian.",
+    "Expected Result": "Guardian MEM-001 must co-authorise. Transaction blocked without guardian consent.",
+    "Test Data Used": "MEM-008, TXN-021",
+    "Priority": "Must Have"
+  },
+  {
+    "Test ID": "TS-028",
+    "Module": "Members",
+    "Scenario": "KYC expired — re-validation alert",
+    "Steps": "1. Access MEM-013 (KYC EXPIRED). 2. Try to process transaction.",
+    "Expected Result": "System shows: 'KYC expired. Re-validation required before transactions.' Alert to Secretary.",
+    "Test Data Used": "MEM-013, TXN-028",
+    "Priority": "Must Have"
+  },
+  {
+    "Test ID": "TS-029",
+    "Module": "Auditor",
+    "Scenario": "Auditor read-only — write attempt blocked",
+    "Steps": "1. Login as USR-008 (Auditor). 2. Attempt to approve MC-003 or submit a transaction.",
+    "Expected Result": "System BLOCKS all write actions. Read-only access only. All attempts logged.",
+    "Test Data Used": "USR-008",
+    "Priority": "Must Have"
+  },
+  {
+    "Test ID": "TS-030",
+    "Module": "Platform Rules",
+    "Scenario": "Penal rate — cannot be changed",
+    "Steps": "1. Login as Society Admin USR-005. 2. Navigate to platform parameters. 3. Attempt to change penal rate.",
+    "Expected Result": "Penal rate field is READ-ONLY (24% p.a.). Tooltip: 'Platform-fixed — RBI Circular RBI/2023-24/53'. Cannot be changed.",
+    "Test Data Used": "SCH-LN-002",
+    "Priority": "Critical"
+  },
+  {
+    "Test ID": "Column H 'Pass/Fail': select from dropdown PASS / FAIL / BLOCKED / NOT TESTED | 17 Critical tests must all PASS before release | TS-003: same-user session binding is most commonly missed | TS-020: penal-in-principal test is regulatory critical"
+  }
+]

@@ -63,15 +63,15 @@ function mapLoan(l: any) {
       principal: Number(e.principalAmount ?? e.principal ?? 0),
       interest: Number(e.interestAmount ?? e.interest ?? 0),
       penal: Number(e.penalAmount ?? 0),
-      total: Number(e.totalAmount ?? e.total ?? 0),
-      paid: e.status === 'paid' || e.status === 'PAID' ? Number(e.totalAmount ?? e.total ?? 0) : 0,
+      total: Number(e.totalEmi ?? e.totalAmount ?? e.total ?? 0),
+      paid: e.status === 'paid' || e.status === 'PAID' ? Number(e.totalEmi ?? e.totalAmount ?? e.total ?? 0) : 0,
       balance: Number(e.outstanding ?? 0),
       status: (e.status || 'UPCOMING').toUpperCase(),
     })),
   };
 }
 
-export default function LoanDetailPage({ params }: { params: { id: string } }) {
+export default function LoanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { hasPermission } = useAuth();
   const [loan, setLoan] = useState<ReturnType<typeof mapLoan> | null>(null);
@@ -81,12 +81,14 @@ export default function LoanDetailPage({ params }: { params: { id: string } }) {
   const [selectedEmi, setSelectedEmi] = useState<{ id?: string; no: number; dueDate: Date; principal: number; interest: number; penal: number; total: number; paid: number; balance: number; status: string } | null>(null);
   const [payAmount, setPayAmount] = useState(0);
 
+  const resolvedParams = React.use(params);
+  
   useEffect(() => {
-    loansApi.get(params.id)
+    loansApi.get(resolvedParams.id)
       .then((r) => setLoan(mapLoan(r.loan)))
       .catch(() => setLoan(null))
       .finally(() => setLoading(false));
-  }, [params.id]);
+  }, [resolvedParams.id]);
 
   if (loading || !loan) {
     return (

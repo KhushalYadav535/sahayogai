@@ -1,9 +1,9 @@
 'use client';
 
-import React, { use, useState, useEffect } from 'react';
+import React, { use, useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
-import { membersApi, sbApi, loansApi } from '@/lib/api';
+import { membersApi, sbApi, loansApi, loanSanctionApi } from '@/lib/api';
 import { Permission, UserRole } from '@/lib/types/auth';
 import { Member, MemberStatus, MemberCategory, KYCStatus } from '@/lib/types/member';
 import { RiskScorePanel } from '@/components/ai/risk-score-panel';
@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, Calendar, MapPin, FileText, User, Edit, Pause, LogOut, Heart, Download, Clock, CheckCircle, AlertCircle, Ban, RefreshCw, Share2, Users, FileCheck } from 'lucide-react';
+import { AlertTriangle, Calendar, MapPin, FileText, User, Edit, Pause, LogOut, Heart, Download, Clock, CheckCircle, AlertCircle, Ban, RefreshCw, Share2, Users, FileCheck, Camera } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 
@@ -110,8 +110,15 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
   const { toast } = useToast();
   const { user, hasPermission } = useAuth();
   const [member, setMember] = useState<Member | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const signatureInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isUploadingSignature, setIsUploadingSignature] = useState(false);
   const [accounts, setAccounts] = useState<{ id?: string; accountNo: string; type: string; balance: number; status: string; openedDate: Date }[]>([]);
   const [loans, setLoans] = useState<{ loanId: string; type: string; amount: number; outstanding: number; status: string; nextEmiDate?: Date }[]>([]);
+  const [pendingApplications, setPendingApplications] = useState<any[]>([]);
   const [documents, setDocuments] = useState<{ type: string; uploadDate: Date; status: string; verifiedBy: string; verifiedOn: Date }[]>([]);
   const [auditTrail, setAuditTrail] = useState<{ event: string; user: string; role: string; timestamp: Date; ip: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,11 +129,21 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
 
   useEffect(() => {
     if (!id) return;
+
+    membersApi.getPhoto(id).then(res => {
+      if (res.success && res.photoUrl) setPhotoUrl(res.photoUrl);
+    }).catch(() => { /* ignore 404 if no photo */ });
+    
+    membersApi.getSignature(id).then(res => {
+      if (res.success && res.signatureUrl) setSignatureUrl(res.signatureUrl);
+    }).catch(() => { /* ignore 404 */ });
+
     Promise.all([
       membersApi.get(id),
       sbApi.list({ memberId: id }),
       loansApi.list({ memberId: id }),
-    ]).then(([memRes, sbRes, loanRes]) => {
+      loansApi.applications({ memberId: id }).catch(() => ({ applications: [] })),
+    ]).then(([memRes, sbRes, loanRes, appRes]) => {
       // Handle potential API errors
       if (!sbRes || !sbRes.success) {
         console.error("SB API error:", sbRes);
@@ -134,12 +151,6 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
       }
       if (memRes.member) setMember(mapApiMember(memRes.member));
       
-      // Debug: Log the API response
-      if (sbRes && sbRes.accounts) {
-        console.log("SB Accounts API Response:", sbRes.accounts);
-      }
-      
-      // Handle SB accounts response - check multiple possible response structures
       let accountsArray: any[] = [];
       if (sbRes) {
         if (sbRes.success && Array.isArray(sbRes.accounts)) {
@@ -197,7 +208,33 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
         status: (l.status || 'active').toUpperCase(),
         nextEmiDate: l.emiSchedule?.[0]?.dueDate ? new Date(l.emiSchedule[0].dueDate) : undefined,
       })));
-      setDocuments([]);
+      // Pending applications awaiting acknowledgement
+      const pendingApps = (appRes.applications || []).filter((a: any) =>
+        a.status === 'SANCTIONED'
+      );
+      setPendingApplications(pendingApps);
+      const docs = [];
+      if (memRes.member?.photos && memRes.member.photos.length > 0) {
+        const photo = memRes.member.photos[0];
+        docs.push({
+          type: "Member Photo",
+          status: photo.status,
+          uploadDate: photo.submittedAt ? new Date(photo.submittedAt) : new Date(),
+          verifiedBy: photo.status === "ACTIVE" ? "Checker" : "-",
+          verifiedOn: photo.approvedAt ? new Date(photo.approvedAt) : null,
+        });
+      }
+      if (memRes.member?.signatures && memRes.member.signatures.length > 0) {
+        const sig = memRes.member.signatures[0];
+        docs.push({
+          type: "Member Signature",
+          status: sig.status,
+          uploadDate: sig.submittedAt ? new Date(sig.submittedAt) : new Date(),
+          verifiedBy: sig.status === "ACTIVE" ? "Checker" : "-",
+          verifiedOn: sig.approvedAt ? new Date(sig.approvedAt) : null,
+        });
+      }
+      setDocuments(docs);
       setAuditTrail([]);
     }).catch((err) => {
       console.error("Error loading member data:", err);
@@ -211,6 +248,39 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
       });
     }).finally(() => setLoading(false));
   }, [id]);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    setIsUploadingPhoto(true);
+    try {
+      await membersApi.uploadPhoto(id, file);
+      const res = await membersApi.getPhoto(id);
+      if (res.success && res.photoUrl) setPhotoUrl(res.photoUrl);
+      toast({ title: "Success", description: "Photo updated successfully" });
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to upload photo", variant: "destructive" });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleSignatureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    setIsUploadingSignature(true);
+    try {
+      await membersApi.uploadSignature(id, file);
+      const res = await membersApi.getSignature(id);
+      if (res.success && res.signatureUrl) setSignatureUrl(res.signatureUrl);
+      toast({ title: "Success", description: "Signature updated successfully" });
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to upload signature", variant: "destructive" });
+    } finally {
+      setIsUploadingSignature(false);
+    }
+  };
+
 
   if (!id || loading || !member) {
     return (
@@ -230,8 +300,34 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
       <div className="flex items-start justify-between">
         <div className="space-y-4 flex-1">
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <User className="w-10 h-10 text-white" />
+            <div className="relative group">
+              <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                <img 
+                  src={photoUrl || "/placeholder-user.jpg"} 
+                  alt="Member Profile" 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+              {hasPermission(Permission.MEMBER_EDIT) && (
+                <>
+                  <Button 
+                    variant="secondary" 
+                    size="icon" 
+                    className="absolute bottom-0 right-0 w-6 h-6 rounded-full shadow-sm"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={isUploadingPhoto}
+                  >
+                    <Camera className="w-3 h-3" />
+                  </Button>
+                  <input 
+                    type="file" 
+                    ref={photoInputRef} 
+                    className="hidden" 
+                    accept="image/jpeg,image/png" 
+                    onChange={handlePhotoUpload} 
+                  />
+                </>
+              )}
             </div>
             <div className="flex-1">
               <h1 className="text-3xl font-bold">{member.firstName} {member.lastName}</h1>
@@ -358,7 +454,7 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
         <Alert className="border-amber-200 bg-amber-50">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-800">
-            KYC expires on {member.kycExpiryDate?.toLocaleDateString()} — Initiate Re-validation
+            KYC expires on {member.kycExpiryDate?.toLocaleDateString()} â€” Initiate Re-validation
           </AlertDescription>
         </Alert>
       )}
@@ -403,6 +499,42 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                     <p className="font-semibold">{member.occupation}</p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Signature */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-lg">Signature</CardTitle>
+                {hasPermission(Permission.MEMBER_EDIT) && (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => signatureInputRef.current?.click()}
+                      disabled={isUploadingSignature}
+                    >
+                      <Camera className="w-4 h-4 mr-2" />
+                      {signatureUrl ? "Update Signature" : "Upload Signature"}
+                    </Button>
+                    <input 
+                      type="file" 
+                      ref={signatureInputRef} 
+                      className="hidden" 
+                      accept="image/jpeg,image/png" 
+                      onChange={handleSignatureUpload} 
+                    />
+                  </>
+                )}
+              </CardHeader>
+              <CardContent>
+                {signatureUrl ? (
+                  <div className="w-full max-w-[200px] h-20 border rounded overflow-hidden flex items-center justify-center bg-white">
+                    <img src={signatureUrl} alt="Signature" className="max-w-full max-h-full" />
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">No signature uploaded</p>
+                )}
               </CardContent>
             </Card>
 
@@ -473,7 +605,7 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Shares Held</p>
-                  <p className="font-semibold">{member.sharesHeld} @ ₹100/share = ₹{member.totalShareAmount}</p>
+                  <p className="font-semibold">{member.sharesHeld} @ â‚¹100/share = â‚¹{member.totalShareAmount}</p>
                 </div>
                 {hasPermission(Permission.MEMBER_EDIT) && (
                   <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => {
@@ -573,6 +705,29 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                 </Badge>
               </div>
               <div className="flex gap-2">
+                {member.kycStatus === 'PENDING' && (
+                  <Button
+                    variant="default"
+                    disabled={kycReinitiating}
+                    onClick={async () => {
+                      if (!id) return;
+                      setKycReinitiating(true);
+                      try {
+                        await membersApi.kyc.verify(id, { status: 'verified' });
+                        toast({ title: 'KYC Verified', description: 'Member KYC has been verified successfully.' });
+                        const res = await membersApi.get(id);
+                        if (res.member) setMember(mapApiMember(res.member));
+                      } catch (e) {
+                        toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
+                      } finally {
+                        setKycReinitiating(false);
+                      }
+                    }}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Verify KYC
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   disabled={kycReinitiating}
@@ -619,21 +774,34 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {documents.map((doc, idx) => (
+              {documents.length === 0 ? (
+                <div className="col-span-full py-4 text-center text-muted-foreground border border-dashed rounded-lg">
+                  No documents found
+                </div>
+              ) : documents.map((doc, idx) => (
                 <Card key={idx}>
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <p className="font-semibold">{doc.type}</p>
                         <p className="text-sm text-muted-foreground">Uploaded: {doc.uploadDate.toLocaleDateString()}</p>
-                        <Badge variant="outline" className="mt-2 bg-green-50 text-green-800 border-green-200">
-                          ✓ {doc.status}
+                        <Badge 
+                          variant="outline" 
+                          className={`mt-2 ${
+                            doc.status === 'ACTIVE' 
+                              ? 'bg-green-50 text-green-800 border-green-200' 
+                              : doc.status === 'PENDING_APPROVAL'
+                              ? 'bg-yellow-50 text-yellow-800 border-yellow-200'
+                              : 'bg-red-50 text-red-800 border-red-200'
+                          }`}
+                        >
+                          {doc.status === 'ACTIVE' ? 'âœ“ ' : ''}{doc.status}
                         </Badge>
                       </div>
                       <Download className="w-4 h-4 text-muted-foreground cursor-pointer" />
                     </div>
                     <p className="text-xs text-muted-foreground mt-3">Verified by {doc.verifiedBy}</p>
-                    <p className="text-xs text-muted-foreground">on {doc.verifiedOn.toLocaleDateString()}</p>
+                    <p className="text-xs text-muted-foreground">on {doc.verifiedOn ? doc.verifiedOn.toLocaleDateString() : '-'}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -701,7 +869,7 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                           <TableRow key={`${account.accountNo}-${index}`}>
                             <TableCell className="font-semibold">{account.accountNo}</TableCell>
                             <TableCell>{account.type}</TableCell>
-                            <TableCell className="text-right font-semibold">₹{account.balance.toLocaleString()}</TableCell>
+                            <TableCell className="text-right font-semibold">â‚¹{account.balance.toLocaleString()}</TableCell>
                             <TableCell>
                               <Badge variant="outline" className="bg-green-50 text-green-800">
                                 {account.status}
@@ -732,7 +900,7 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                         <TableRow key={accountId}>
                           <TableCell className="font-semibold">{account.accountNo}</TableCell>
                           <TableCell>{account.type}</TableCell>
-                          <TableCell className="text-right font-semibold">₹{account.balance.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-semibold">â‚¹{account.balance.toLocaleString()}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="bg-green-50 text-green-800">
                               {account.status}
@@ -756,6 +924,53 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
 
         {/* Loans Tab */}
         <TabsContent value="loans">
+          {/* Pending Sanction Acknowledgement Section */}
+          {pendingApplications.length > 0 && (
+            <Card className="mb-4 border-amber-200 bg-amber-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-amber-800 flex items-center gap-2">
+                  <span>⏳</span> Sanction Acknowledgement Pending
+                </CardTitle>
+                <CardDescription className="text-amber-700">
+                  नीचे दिए गए लोन को member का sign-off चाहिए। Acknowledge करने के बाद Disbursement हो सकेगा।
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {pendingApplications.map((app: any) => (
+                    <div key={app.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-amber-200">
+                      <div>
+                        <p className="font-semibold text-sm">Application #{app.id.slice(-8)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {app.loanType?.toUpperCase()} • ₹{Number(app.amountRequested).toLocaleString('en-IN')} • {app.tenureMonths} months
+                        </p>
+                        <Badge className="mt-1 bg-amber-100 text-amber-800 border-amber-300" variant="outline">
+                          SANCTIONED — Awaiting Member Acknowledgement
+                        </Badge>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={async () => {
+                          try {
+                            const res = await loanSanctionApi.acknowledgeSanction(app.id, {});
+                            if (res.success) {
+                              toast({ title: 'Success', description: 'Sanction acknowledged! Disbursement can now proceed.' });
+                              setPendingApplications(prev => prev.filter(a => a.id !== app.id));
+                            }
+                          } catch (err: any) {
+                            toast({ title: 'Error', description: err.message || 'Failed to acknowledge', variant: 'destructive' });
+                          }
+                        }}
+                      >
+                        ✅ Acknowledge Sanction
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader>
               <CardTitle>Loans</CardTitle>
@@ -778,8 +993,8 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                     <TableRow key={loan.loanId}>
                       <TableCell className="font-semibold">{loan.loanId}</TableCell>
                       <TableCell>{loan.type}</TableCell>
-                      <TableCell className="text-right">₹{loan.amount.toLocaleString()}</TableCell>
-                      <TableCell className="text-right font-semibold">₹{loan.outstanding.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">â‚¹{loan.amount.toLocaleString()}</TableCell>
+                      <TableCell className="text-right font-semibold">â‚¹{loan.outstanding.toLocaleString()}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="bg-green-50 text-green-800">
                           {loan.status}
@@ -884,9 +1099,9 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                           <Badge variant="outline">{entry.type}</Badge>
                         </TableCell>
                         <TableCell className="max-w-md truncate">{entry.description}</TableCell>
-                        <TableCell className="text-right">{entry.debit ? `₹${entry.debit.toLocaleString()}` : '-'}</TableCell>
-                        <TableCell className="text-right">{entry.credit ? `₹${entry.credit.toLocaleString()}` : '-'}</TableCell>
-                        <TableCell className="text-right">{entry.balance ? `₹${entry.balance.toLocaleString()}` : '-'}</TableCell>
+                        <TableCell className="text-right">{entry.debit ? `â‚¹${entry.debit.toLocaleString()}` : '-'}</TableCell>
+                        <TableCell className="text-right">{entry.credit ? `â‚¹${entry.credit.toLocaleString()}` : '-'}</TableCell>
+                        <TableCell className="text-right">{entry.balance ? `â‚¹${entry.balance.toLocaleString()}` : '-'}</TableCell>
                       </TableRow>
                     ))
                   )}
@@ -945,7 +1160,7 @@ export default function MemberDetailPage({ params }: MemberDetailPageProps) {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold">{entry.event}</p>
                       <p className="text-sm text-muted-foreground">
-                        By {entry.user} ({entry.role}) • {new Date(entry.timestamp).toLocaleString()}
+                        By {entry.user} ({entry.role}) â€¢ {new Date(entry.timestamp).toLocaleString()}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">IP: {entry.ip}</p>
                     </div>

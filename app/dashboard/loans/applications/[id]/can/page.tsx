@@ -54,7 +54,7 @@ export default function CreditAppraisalNotePage({ params }: { params: Promise<{ 
       const [appRes, canRes, matrixRes] = await Promise.all([
         loansApi.getApplication(id),
         loanSanctionApi.getCAN(id).catch(() => ({ success: false })),
-        loanSanctionApi.getAuthorityMatrix(),
+        loanSanctionApi.getAuthorityMatrix().catch(() => ({ success: false, matrix: [] })),
       ]);
 
       if (appRes.success) {
@@ -201,6 +201,26 @@ export default function CreditAppraisalNotePage({ params }: { params: Promise<{ 
         {can && application?.status === 'PENDING_SANCTION' && (
           <Button onClick={() => setIsSanctionDialogOpen(true)}>
             Process Sanction
+          </Button>
+        )}
+        {application?.status === 'SANCTIONED' && (
+          <Button
+            variant="default"
+            className="bg-green-600 hover:bg-green-700"
+            onClick={async () => {
+              try {
+                const res = await loanSanctionApi.acknowledgeSanction(applicationId!, {});
+                if (res.success) {
+                  toast({ title: 'Success', description: 'Sanction acknowledged by member' });
+                  fetchData(applicationId!);
+                }
+              } catch (error: any) {
+                toast({ title: 'Error', description: error.message || 'Failed to acknowledge', variant: 'destructive' });
+              }
+            }}
+          >
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Acknowledge Sanction (Member Sign-off)
           </Button>
         )}
         {/* BRD v5.0 LN-CAN05: Download Sanction Letter PDF */}

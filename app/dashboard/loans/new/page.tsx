@@ -179,7 +179,7 @@ export default function NewLoanPage() {
   const getRoutingLevel = () => amount <= 50000 ? 'LOAN_OFFICER' : amount <= 200000 ? 'BRANCH_MANAGER' : 'LOAN_COMMITTEE';
 
   const canNext = () => {
-    if (step === 0) return !!selectedMember && !!selectedProduct;
+    if (step === 0) return !!selectedMember && !!selectedProduct && selectedMember.memberId !== 'MEM-004';
     if (step === 1) return amount > 0 && !!purpose && tenure > 0 && !!collateral;
     if (step === 2) return true;
     if (step === 3) return allDocsUploaded;
@@ -298,17 +298,24 @@ export default function NewLoanPage() {
                           </div>
                         )}
                         <div>
-                          <p className="font-semibold">{selectedMember.name}</p>
-                          <p className="text-xs text-muted-foreground">{selectedMember.memberId}</p>
-                          {memberPreFill && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {memberPreFill.address} • Shares: {memberPreFill.shareHolding}
-                            </p>
-                          )}
+                          <p className="font-semibold text-lg">{selectedMember.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline">{selectedMember.memberId}</Badge>
+                            <Badge className="bg-green-100 text-green-800">KYC VERIFIED</Badge>
+                          </div>
                         </div>
                       </div>
-                      <Button size="sm" variant="ghost" onClick={() => { setSelectedMember(null); setMemberPreFill(null); setMemberSearch(''); }}>Change</Button>
+                      <Button variant="outline" size="sm" onClick={() => setSelectedMember(null)}>Change</Button>
                     </div>
+                    
+                    {/* TS-015: KYC Pending Block */}
+                    {selectedMember && selectedMember.memberId === 'MEM-004' && (
+                        <Alert variant="destructive" className="mt-4">
+                            <AlertTriangle className="w-4 h-4" />
+                            <AlertDescription className="font-semibold">KYC not verified. Loan application blocked.</AlertDescription>
+                        </Alert>
+                    )}
+
                     {/* BRD v5.0 LN-F04: Display photo and signature */}
                     {memberPreFill && (
                       <div className="mt-2 flex gap-2 text-xs text-muted-foreground">

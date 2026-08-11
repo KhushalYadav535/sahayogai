@@ -1,0 +1,105 @@
+[
+  {
+    "User ID": "USR-001",
+    "Full Name": "Arjun Mehta",
+    "Role": "ACCOUNTANT (MAKER)",
+    "Can Initiate?": "Yes",
+    "Can Approve?": "No",
+    "Same as Maker?": "N/A",
+    "User Status": "ACTIVE",
+    "Test Purpose": "Primary maker — initiates all transactions; cannot self-approve"
+  },
+  {
+    "User ID": "USR-002",
+    "Full Name": "Priya Nair",
+    "Role": "SR. ACCOUNTANT (CHECKER)",
+    "Can Initiate?": "No",
+    "Can Approve?": "Yes",
+    "Same as Maker?": "USR-001",
+    "User Status": "ACTIVE",
+    "Test Purpose": "Primary checker — approves Maker submissions; cannot approve own work"
+  },
+  {
+    "User ID": "USR-003",
+    "Full Name": "Vikram Rao",
+    "Role": "LOAN OFFICER",
+    "Can Initiate?": "Yes (loans only)",
+    "Can Approve?": "No",
+    "Same as Maker?": "N/A",
+    "User Status": "ACTIVE",
+    "Test Purpose": "Loan intake, appraisal, disbursement initiation; cannot sanction"
+  },
+  {
+    "User ID": "USR-004",
+    "Full Name": "Ramesh Patil",
+    "Role": "PRESIDENT",
+    "Can Initiate?": "No",
+    "Can Approve?": "Yes (high value)",
+    "Same as Maker?": "N/A",
+    "User Status": "ACTIVE",
+    "Test Purpose": "Final authority — sanctions large loans; approves rate changes >0.5%"
+  },
+  {
+    "User ID": "USR-005",
+    "Full Name": "Sunita Agarwal",
+    "Role": "SOCIETY ADMIN",
+    "Can Initiate?": "Yes (config)",
+    "Can Approve?": "Yes (scheme)",
+    "Same as Maker?": "N/A",
+    "User Status": "ACTIVE",
+    "Test Purpose": "Config + checker for photo/signature; cannot change platform-scope params"
+  },
+  {
+    "User ID": "USR-006",
+    "Full Name": "Priya Deshpande",
+    "Role": "SECRETARY",
+    "Can Initiate?": "Yes (KYC/photo)",
+    "Can Approve?": "No",
+    "Same as Maker?": "N/A",
+    "User Status": "ACTIVE",
+    "Test Purpose": "Member registration, photo/sig upload (Maker); cannot approve own uploads"
+  },
+  {
+    "User ID": "USR-007",
+    "Full Name": "Meena Joshi",
+    "Role": "COMPLIANCE OFFICER",
+    "Can Initiate?": "No",
+    "Can Approve?": "No",
+    "Same as Maker?": "N/A",
+    "User Status": "ACTIVE",
+    "Test Purpose": "Read + flag only; cannot modify transactions; accesses AI audit log"
+  },
+  {
+    "User ID": "USR-008",
+    "Full Name": "Suresh Kulkarni",
+    "Role": "AUDITOR",
+    "Can Initiate?": "No",
+    "Can Approve?": "No",
+    "Same as Maker?": "N/A",
+    "User Status": "ACTIVE",
+    "Test Purpose": "Read-only ALL records; cannot create, modify, or approve anything"
+  },
+  {
+    "User ID": "USR-009",
+    "Full Name": "Ramesh Patil",
+    "Role": "MEMBER",
+    "Can Initiate?": "No",
+    "Can Approve?": "No",
+    "Same as Maker?": "N/A",
+    "User Status": "ACTIVE",
+    "Test Purpose": "Self-service only — own accounts; EMI simulator; cannot see other members"
+  },
+  {
+    "User ID": "USR-010",
+    "Full Name": "Arjun Mehta",
+    "Role": "ACCOUNTANT (MAKER)",
+    "Can Initiate?": "Yes",
+    "Can Approve?": "No",
+    "Same as Maker?": "N/A",
+    "User Status": "INACTIVE",
+    "Test Purpose": "INACTIVE user — test that inactive user cannot log in or initiate"
+  },
+  {
+    "User ID": "USR-010: Inactive user test — must be blocked from login | USR-002 cannot approve any item initiated by USR-001 if they are the SAME PERSON (session binding test — MC-030) | USR-008 Auditor: read-only ALL records, zero write access"
+  }
+]

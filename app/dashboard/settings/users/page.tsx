@@ -28,6 +28,7 @@ const roleColors: Record<string, string> = {
     [UserRole.COMPLIANCE_OFFICER]: 'bg-rose-100 text-rose-800',
     [UserRole.AUDITOR]: 'bg-slate-100 text-slate-700',
     [UserRole.MEMBER]: 'bg-orange-100 text-orange-800',
+    [UserRole.BRANCH_MANAGER]: 'bg-emerald-100 text-emerald-800',
 };
 
 // Backend role string → frontend UserRole label
@@ -42,6 +43,7 @@ const roleMap: Record<string, string> = {
     compliance_officer: UserRole.COMPLIANCE_OFFICER,
     auditor: UserRole.AUDITOR,
     member: UserRole.MEMBER,
+    branch_manager: UserRole.BRANCH_MANAGER,
     staff: UserRole.ACCOUNTANT, // legacy fallback
 };
 
@@ -57,6 +59,7 @@ const roleToBackend: Record<string, string> = {
     [UserRole.COMPLIANCE_OFFICER]: 'compliance_officer',
     [UserRole.AUDITOR]: 'auditor',
     [UserRole.MEMBER]: 'member',
+    [UserRole.BRANCH_MANAGER]: 'branch_manager',
 };
 
 type UserRow = {

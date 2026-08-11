@@ -1,0 +1,275 @@
+[
+  {
+    "Event ID": "AUD-001",
+    "Date-Time": "14-Mar 00:01",
+    "Actor": "System (auto)",
+    "Account / Item": "LN-2026-0031",
+    "Event Description": "NPA threshold crossed. Account classified SUB_STANDARD. Provisioning 10% = ₹29,321. Dr Provision for Bad Debts · Cr Provision A/c. Normal interest accrual STOPPED.",
+    "Module Ref": "INT-007, ACC-005",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-002",
+    "Date-Time": "14-Mar 00:01",
+    "Actor": "System (auto)",
+    "Account / Item": "LN-2024-0014",
+    "Event Description": "Day 15 overdue. Auto-SMS sent to member Meena Joshi. Penal interest ₹30/day started. Loan Officer Vikram Rao notified.",
+    "Module Ref": "INT-007",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-003",
+    "Date-Time": "14-Mar 09:00",
+    "Actor": "Arjun Mehta (Maker)",
+    "Account / Item": "SCH-FDR-003",
+    "Event Description": "Interest scheme SCH-FDR-003 submitted for Checker approval. FDR scheme. Avg rate delta +0.62%. Status → PENDING_APPROVAL. SLA: 4 hrs.",
+    "Module Ref": "INT-001A",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-004",
+    "Date-Time": "14-Mar 09:01",
+    "Actor": "System (auto)",
+    "Account / Item": "SCH-FDR-003",
+    "Event Description": "Rate delta +0.62% exceeds threshold 0.5%. President Ramesh Patil auto-notified for governance oversight. Session IDs logged.",
+    "Module Ref": "INT-001A",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-005",
+    "Date-Time": "14-Mar 09:05",
+    "Actor": "Vikram Rao (L.O.)",
+    "Account / Item": "LN-APP-0003",
+    "Event Description": "AI score override recorded. Score: 0.72. Category: GUARANTOR_STRENGTH. Narrative: 'Strong guarantor; long banking relationship'. Model v2.3. Input hash: a3f9c2...",
+    "Module Ref": "Section 2.3",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-006",
+    "Date-Time": "14-Mar 09:15",
+    "Actor": "System — AI",
+    "Account / Item": "LN-APP-0003",
+    "Event Description": "XGBoost/LightGBM risk score generated. Score: 0.72. Threshold: 0.60. Confidence: 0.84. Top factor: debt-to-income 0.42. XAI attached. Logged AI_AUDIT_LOG.",
+    "Module Ref": "Section 2.3",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-007",
+    "Date-Time": "14-Mar 09:30",
+    "Actor": "Arjun Mehta (Maker)",
+    "Account / Item": "FDR-2024-0031",
+    "Event Description": "FDR premature closure initiated. Member: Ramesh Patil. 14/36 months elapsed. Penalty 1%. Effective rate 6.25%. Interest ₹36,458. TDS check: annual ₹36,250 < ₹40,000 — no TDS.",
+    "Module Ref": "INT-004B",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-008",
+    "Date-Time": "14-Mar 09:55",
+    "Actor": "Priya Nair (Checker)",
+    "Account / Item": "FDR-2024-0031",
+    "Event Description": "FDR closure APPROVED. Reason: 'Calculations verified'. GL: Dr FDR A/c ₹5,00,000 + Dr Accrued Int ₹36,458 · Cr Member SB ₹5,36,458. Voucher FDC-2026-0021.",
+    "Module Ref": "Module 6",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-009",
+    "Date-Time": "14-Mar 10:00",
+    "Actor": "Arjun Mehta (Maker)",
+    "Account / Item": "TXN-002",
+    "Event Description": "Cash withdrawal ₹75,000 entered. Account SB-2024-0042 (Suresh Kumar). Amount above threshold ₹50,000. Submitted for Checker. SLA: 30 min (live counter).",
+    "Module Ref": "Section 2.4",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-010",
+    "Date-Time": "14-Mar 10:31",
+    "Actor": "Priya Nair (Checker)",
+    "Account / Item": "TXN-002",
+    "Event Description": "Signature verification: VERIFIED. Specimen matches signed voucher. Decision recorded before approval buttons enabled.",
+    "Module Ref": "MEM-028",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-011",
+    "Date-Time": "14-Mar 10:33",
+    "Actor": "Priya Nair (Checker)",
+    "Account / Item": "TXN-002",
+    "Event Description": "Cash withdrawal APPROVED. Reason: 'Approved — verified'. GL: Dr SB-2024-0042 ₹75,000 · Cr Cash on Hand ₹75,000. Voucher TXN-2026-0412. Atomic.",
+    "Module Ref": "Module 6",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-012",
+    "Date-Time": "14-Mar 11:00",
+    "Actor": "System (auto)",
+    "Account / Item": "MC-002",
+    "Event Description": "SLA BREACHED. Scheme SCH-LN-006 pending 5.5 hrs (SLA: 4 hrs). Status → ESCALATED. P1 alert sent to President Ramesh Patil. SMS + dashboard notification.",
+    "Module Ref": "Section 2.4",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-013",
+    "Date-Time": "14-Mar 11:32",
+    "Actor": "Priya Nair (Checker)",
+    "Account / Item": "SCH-FDR-003",
+    "Event Description": "Interest scheme APPROVED. Reason: 'Rates within policy'. Previous scheme SCH-FDR-002 → SUPERSEDED. New scheme → ACTIVE from 01-Apr-2026. Rate delta per slab logged.",
+    "Module Ref": "INT-001A",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-014",
+    "Date-Time": "14-Mar 11:45",
+    "Actor": "Arjun Mehta (Maker)",
+    "Account / Item": "LN-PENDING-01",
+    "Event Description": "Loan disbursement initiated. Amount ₹3,00,000. Mode: NEFT. All 6 pre-disbursement gates GREEN. EMI schedule generated. Submitted for Checker.",
+    "Module Ref": "LN-DIS01",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-015",
+    "Date-Time": "14-Mar 12:00",
+    "Actor": "Priya Nair (Checker)",
+    "Account / Item": "LN-PENDING-01",
+    "Event Description": "Disbursement APPROVED. Reason: 'All gates cleared'. GL: Dr Loan A/c ₹3,00,000 · Cr NEFT Clearing A/c ₹3,00,000. Loan → ACTIVE. EMI schedule activated.",
+    "Module Ref": "LN-DIS06",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-016",
+    "Date-Time": "14-Mar 12:01",
+    "Actor": "System (auto)",
+    "Account / Item": "LN-PENDING-01",
+    "Event Description": "Post-disbursement SMS sent to member. Smart Reminder Engine activated. 36 EMI reminders scheduled. First EMI due: 15-Apr-2026.",
+    "Module Ref": "LN-DIS08, Sec 2.3",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-017",
+    "Date-Time": "14-Mar 12:30",
+    "Actor": "Priya Nair (Checker)",
+    "Account / Item": "MC-010",
+    "Event Description": "Signature REJECTED for MEM-010. Reason: 'Signature blank — ink coverage 2%, below 5% threshold'. Teller notified. Transaction MEM-010 cash blocked.",
+    "Module Ref": "MEM-028",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-018",
+    "Date-Time": "14-Mar 13:00",
+    "Actor": "System — INT-012",
+    "Account / Item": "ACC-005 Day-end",
+    "Event Description": "AI anomaly detection (INT-012): 377 accruals checked. 2 anomalies flagged. Accounts: SB-2024-0009 (deviation +0.15%), LN-2024-0011 (deviation +0.08%). Routed to Sr. Accountant queue.",
+    "Module Ref": "INT-012",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-019",
+    "Date-Time": "14-Mar 13:05",
+    "Actor": "Priya Nair (Checker)",
+    "Account / Item": "SB-2024-0009",
+    "Event Description": "Anomaly resolved. Resolution code: RECALCULATED_CORRECT. Investigation: interest correct — large balance caused absolute deviation. Logged.",
+    "Module Ref": "INT-012A",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-020",
+    "Date-Time": "14-Mar 14:00",
+    "Actor": "Sunita Agarwal (Admin)",
+    "Account / Item": "MC-009",
+    "Event Description": "Photo upload MC-009 for MEM-014 ESCALATED (20 hrs elapsed, SLA 4 hrs). Society Admin reviewing. Photo still PENDING_APPROVAL. Onboarding blocked until approved.",
+    "Module Ref": "MEM-027",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-021",
+    "Date-Time": "30-Sep-2025 23:59",
+    "Actor": "System (auto)",
+    "Account / Item": "SB-ALL",
+    "Event Description": "Half-yearly SB interest accrual posted for all 12 active SB accounts. Total posted: ₹18,420. GL: Dr Accrued Int Payable · Cr Member SB Accounts (per account). Atomic batch.",
+    "Module Ref": "INT-009",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-022",
+    "Date-Time": "30-Sep-2025 23:59",
+    "Actor": "System (auto)",
+    "Account / Item": "FDR-ALL",
+    "Event Description": "Quarterly FDR interest posted for 8 active FDR accounts. TDS deducted for 3 accounts (annual int > ₹40,000). GL: Dr Accrued Int · Cr Member SB (net) + Cr TDS Payable. Atomic.",
+    "Module Ref": "INT-009",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-023",
+    "Date-Time": "14-Mar 09:00",
+    "Actor": "System (auto)",
+    "Account / Item": "LN-APP-0001",
+    "Event Description": "Loan application LN-APP-0001 (MEM-004) blocked at eligibility check. KYC status: PENDING. Reason: 'KYC not verified — cannot proceed'. Loan Officer notified.",
+    "Module Ref": "LN-F01",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-024",
+    "Date-Time": "14-Mar 10:15",
+    "Actor": "Arjun Mehta (Maker)",
+    "Account / Item": "LN-APP-0003",
+    "Event Description": "Document tracker updated: 6/6 documents VERIFIED. Sanction letter acknowledgement received. All mandatory docs cleared. Sanction → SANCTION_ACKNOWLEDGED.",
+    "Module Ref": "LN-DC01",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-025",
+    "Date-Time": "14-Mar 11:20",
+    "Actor": "Ramesh Patil (Pres.)",
+    "Account / Item": "LN-APP-0003",
+    "Event Description": "Loan ₹3,00,000 SANCTIONED. Reason: 'Within policy limits; CAN reviewed'. Authority matrix: ₹3L — President level. CAN-2026-0031 reviewed. AI override noted.",
+    "Module Ref": "LN-CAN02",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-026",
+    "Date-Time": "14-Mar 10:00",
+    "Actor": "System (auto)",
+    "Account / Item": "LN-2026-0031",
+    "Event Description": "NPA account: 3 overdue EMIs. Penal accrual: ₹30/day × 95 days = ₹18,715. Penal Interest Receivable A/c. Normal interest: STOPPED (income recognition). Compliance Officer alerted.",
+    "Module Ref": "INT-007",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-027",
+    "Date-Time": "14-Mar 14:30",
+    "Actor": "Meena Joshi (Comp.)",
+    "Account / Item": "LN-2026-0031",
+    "Event Description": "NPA report generated. Classification: SUB_STANDARD. Provision ₹29,321 verified. CIBIL default report queued. Quarterly RBI/NABARD submission prepared.",
+    "Module Ref": "Module 9",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-028",
+    "Date-Time": "13-Mar 10:00",
+    "Actor": "Ramesh Patil (Pres.)",
+    "Account / Item": "LN-2024-0018",
+    "Event Description": "DOUBTFUL loan write-off approved. 100% provision. Dr Provision A/c ₹3,80,000 · Cr Loan A/c ₹3,80,000. Loan legally recoverable — accounting entry only. SARFAESI proceedings initiated.",
+    "Module Ref": "ACC-005",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-029",
+    "Date-Time": "14-Mar 08:00",
+    "Actor": "System (auto)",
+    "Account / Item": "ALL ACCOUNTS",
+    "Event Description": "Day-end job started. Pre-check: counter transactions closed ✓. Cash balanced ✓. Step 1: SB accrual 12 accounts. Step 2: FDR/RD/MIS 24 accounts. Step 3: Loan normal 15 accounts. Step 4: Loan penal 3 overdue accounts. Step 5: AI anomaly check. All passed.",
+    "Module Ref": "ACC-005",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "AUD-030",
+    "Date-Time": "14-Mar 16:00",
+    "Actor": "Arjun Mehta (Maker)",
+    "Account / Item": "SCH-LN-006",
+    "Event Description": "Attempted to submit scheme where Arjun is also designated checker. System REJECTED: 'Maker and Checker must be different users. Session binding violation.' Action blocked. Alert raised to Admin.",
+    "Module Ref": "Section 2.4",
+    "Immutable?": "YES"
+  },
+  {
+    "Event ID": "All 30 audit entries are IMMUTABLE — append-only. No record can be edited or deleted. AUD-030: same-user block test. AUD-001: NPA auto-classification at midnight. AUD-021/022: batch interest posting."
+  }
+]

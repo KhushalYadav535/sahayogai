@@ -121,9 +121,9 @@ export default function LoanDisbursementPage({ params }: { params: Promise<{ id:
     if (!application) return;
     try {
       const res = await loanDisbursementApi.createAccount(application.id, {
-        sanctionedAmount: application.sanctionedAmount || application.amountRequested,
-        interestRate: application.interestRate || 13,
-        tenureMonths: application.tenureMonths || 12,
+        sanctionedAmount: Number(application.sanctionedAmount || application.amountRequested || 0),
+        interestRate: Number(application.interestRate || 13),
+        tenureMonths: Number(application.tenureMonths || 12),
       });
       if (res.success) {
         toast({
@@ -288,7 +288,7 @@ export default function LoanDisbursementPage({ params }: { params: Promise<{ id:
       )}
 
       {/* Loan Account Creation */}
-      {application && !loan && application.status === 'SANCTIONED' && (
+      {application && !loan && ['SANCTIONED', 'SANCTION_ACKNOWLEDGED', 'approved'].includes(application.status) && (
         <Card>
           <CardHeader>
             <CardTitle>Create Loan Account</CardTitle>

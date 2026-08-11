@@ -267,7 +267,24 @@ export default function MemberRegistrationPage() {
         district: formData.city,
         occupation: formData.occupation,
       };
-      await membersApi.create(payload);
+      const res = await membersApi.create(payload);
+      const memberId = res.member.id;
+
+      if (photoFile) {
+        try {
+          await membersApi.uploadPhoto(memberId, photoFile);
+        } catch (e) {
+          console.error("Failed to upload photo", e);
+        }
+      }
+      if (signatureFile) {
+        try {
+          await membersApi.uploadSignature(memberId, signatureFile);
+        } catch (e) {
+          console.error("Failed to upload signature", e);
+        }
+      }
+
       toast({
         title: 'Success',
         description: 'Member registered successfully',

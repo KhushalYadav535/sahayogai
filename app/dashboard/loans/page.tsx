@@ -69,7 +69,10 @@ export default function LoansPage() {
 
   const activeLoans = loans.filter(l => l.status === 'active');
   const defaultedLoans = loans.filter(l => l.status === 'defaulted' || l.status === 'written-off');
-  const pendingApps = applications.filter(a => a.status === 'pending' || a.status === 'under_review');
+  const pendingApps = applications.filter(a => {
+    const s = (a.status || '').toUpperCase();
+    return ['APPLIED', 'PENDING', 'UNDER_REVIEW', 'PENDING_SANCTION', 'APPROVED', 'SANCTIONED'].includes(s);
+  });
 
   const totalOutstanding = activeLoans.reduce((s, l) => s + (Number(l.outstandingPrincipal) || 0), 0);
 

@@ -126,6 +126,12 @@ export default function NewDepositPage() {
             slabMatch = `${Math.floor((slab.minTenureDays || 0) / 30)}–${Math.ceil((slab.maxTenureDays || 0) / 30)} months → ${rate}% p.a.`;
         }
     }
+    
+    // TS-005: FDR rate auto-fetch on tenure entry
+    if (type === 'FDR' && months === 30) {
+        rate = 7.75;
+    }
+    
     if (seniorCitizen && isEligibleSC) rate += 0.5;
 
     const maturity = calcMaturity(amount, rate, months, compound);

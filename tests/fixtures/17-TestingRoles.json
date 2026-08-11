@@ -1,0 +1,133 @@
+[
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "PURPOSE: Eliminate confusion about who does what. Each module has a designated PRIMARY tester. SECONDARY testers cross-validate. One person may hold multiple roles — switch sessions to reflect correct role context. Sheet 15-UserRoles has the complete user master."
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "Role / Designation",
+    "__EMPTY_1": "Team",
+    "__EMPTY_3": "Scope of Testing Responsibility",
+    "__EMPTY_6": "Primary Modules / Test Data Sheets",
+    "__EMPTY_8": "Key Test Scenarios Owned"
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "ACCOUNTANT (MAKER)\r\nUSR-001: Arjun Mehta",
+    "__EMPTY_1": "Accounting Team",
+    "__EMPTY_3": "Initiates ALL financial transactions (cash, NEFT, RTGS, internal transfers). Opens/closes FDR, RD, MIS accounts. Submits interest scheme proposals. Executes day-end jobs in test environment. CANNOT self-approve any submission.",
+    "__EMPTY_6": "Sheets 08 (TXN-001 to TXN-030), 09 (all items with Maker = Arjun Mehta), 10 (all 25 GL patterns), 16 (TS-001, TS-007 to TS-013, TS-022 to TS-023)",
+    "__EMPTY_8": "Module 6 — All transaction types; threshold enforcement\r\nTS-022 — Day-end accrual for all products\r\nTS-023 — Atomic rollback on failure simulation\r\nTS-007/008 — FDR premature closure / TDS\r\nTS-010/011 — Cash withdrawal signature check"
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "SR. ACCOUNTANT (CHECKER)\r\nUSR-002: Priya Nair",
+    "__EMPTY_1": "Accounting Team",
+    "__EMPTY_3": "Approves ALL Maker submissions after verifying: GL accuracy, signature match, threshold compliance, TDS calculation. Manages SLA timers. Rejects incomplete or non-compliant submissions. CANNOT approve own work (session binding enforced).",
+    "__EMPTY_6": "Sheets 08 (all MC-required TXNs), 09 (all items approved/rejected by Priya), 16 (TS-001, TS-002, TS-003, TS-010 to TS-012)",
+    "__EMPTY_8": "Section 2.4 — MC workflow and SLA enforcement\r\nTS-002 — SLA breach → auto-escalation to President\r\nTS-003 — Same-user block (session binding)\r\nTS-010/011 — Signature verification (non-dismissible)\r\nTS-012 — RTGS enforcement above ₹2L"
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "LOAN OFFICER\r\nUSR-003: Vikram Rao",
+    "__EMPTY_1": "Loan Operations Team",
+    "__EMPTY_3": "Initiates ALL loan applications (personal, gold, housing, agriculture). Performs appraisal. Adds guarantors. Initiates disbursement requests after all 6 gates cleared. Enters AI override narratives with structured category codes. Coordinates with President for large-loan sanctions.",
+    "__EMPTY_6": "Sheets 07 (LN-APP-0001 to LN-APP-0003, LN-AGR-0001), 14 (AI scores with override: LN-APP-0003, LN-APP-0006, LN-APP-0009), 09 (MC items initiated by Vikram: LN-APP-0002, LN-APP-0003), 16 (TS-014 to TS-021)",
+    "__EMPTY_8": "Module 4 — Loan lifecycle (apply → sanction → disburse → repay)\r\nSection 2.3 — AI score override with structured codes\r\nINT-006 — EMI schedule generation and verification\r\nTS-014 — AI override path (score 0.72, GUARANTOR_STRENGTH)\r\nTS-016 — 6-gate pre-disbursement blocking\r\nTS-019 — NPA Day-90 SUB_STANDARD classification"
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "PRESIDENT\r\nUSR-004: Ramesh Patil",
+    "__EMPTY_1": "Executive / Governance",
+    "__EMPTY_3": "Sanctions loans ≥ ₹2 lakh. Approves interest rate schemes with delta >0.5%. Auto-notified by system on SLA breaches (P1). Acts as escalation authority. Serves as MEMBER USR-009 for self-service testing.",
+    "__EMPTY_6": "Sheets 02 (SCH-LN-006 delta 1.0%, SCH-FDR-003 delta 0.62%), 07 (LN-2024-0011, LN-2024-0021 sanctioned), 09 (MC-011 President sanction, MC-020 write-off approved by President), 16 (TS-004, TS-017)",
+    "__EMPTY_8": "Module 16 — Rate scheme approval (>0.5% delta → President notified)\r\nTS-004 — FDR scheme delta 0.62% — President oversight notification\r\nTS-017 — ₹20L disbursement — President sanction + RTGS mandatory\r\nTS-002 — Escalation received from SLA breach\r\nTS-003 — Same-user test (also MEMBER role: own account access only)"
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "SOCIETY ADMIN\r\nUSR-005: Sunita Agarwal",
+    "__EMPTY_1": "Administration / IT",
+    "__EMPTY_3": "Configures system parameters (within platform scope). Approves photo/signature uploads via MC workflow. Reviews SLA-escalated items. CANNOT change platform-fixed parameters (e.g., penal rate 24% p.a. is RBI-fixed). Manages user sessions.",
+    "__EMPTY_6": "Sheets 09 (MC-009 escalated photo, MC-020 signature rejection), 15 (USR-005 access rights verification), 16 (TS-025, TS-026, TS-029, TS-030)",
+    "__EMPTY_8": "Section 4 — RBAC enforcement (read-only vs read-write)\r\nTS-025 — Photo upload MC — Society Admin is Checker\r\nTS-026 — Blank signature rejection (system blocks before MC)\r\nTS-029 — Auditor read-only — write attempt blocked\r\nTS-030 — Penal rate 24% p.a. is READ-ONLY (platform-fixed)"
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "SECRETARY\r\nUSR-006: Priya Deshpande",
+    "__EMPTY_1": "Member Services / KYC Team",
+    "__EMPTY_3": "Member registration. KYC document upload (photo, signature) as Maker. Initiates KYC re-validation alerts for expired KYC. CANNOT approve own uploads.",
+    "__EMPTY_6": "Sheets 01 (MEM-004 KYC PENDING, MEM-013 KYC EXPIRED, MEM-014 minor photo), 09 (Secretary-initiated MC items), 16 (TS-015, TS-025, TS-027, TS-028)",
+    "__EMPTY_8": "Module 1 — Member lifecycle (open → KYC → active → inactive)\r\nTS-015 — KYC PENDING blocks loan application gate\r\nTS-027 — Minor account — guardian co-sign required\r\nTS-028 — KYC EXPIRED → re-validation alert triggered"
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "COMPLIANCE OFFICER\r\nUSR-007: Meena Joshi",
+    "__EMPTY_1": "Compliance / Risk",
+    "__EMPTY_3": "Monitors NPA provisioning and overdue buckets. Reviews INT-012 anomaly detection queue. Accesses AI audit logs. Generates regulatory reports. Cannot modify or approve transactions.",
+    "__EMPTY_6": "Sheets 12 (Overdue/NPA buckets, provisioning), 13 (AUD-018/019 anomaly detection), 16 (TS-019, TS-020)",
+    "__EMPTY_8": "INT-007 — NPA classification (STANDARD → SUB_STANDARD → DOUBTFUL) and provisioning %\r\nTS-019 — Day-90 NPA: SUB_STANDARD, provision 10%, normal interest STOPPED\r\nTS-020 — Penal Interest Receivable is SEPARATE from Loan Account at all times\r\nINT-012 — AI anomaly detection on accrual jobs"
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "AUDITOR\r\nUSR-008: Suresh Kulkarni",
+    "__EMPTY_1": "Internal Audit",
+    "__EMPTY_3": "Read-only access to ALL records. Verifies audit trail immutability (append-only). Tests that no record can be edited or deleted. Cannot create, modify, approve, or delete any record.",
+    "__EMPTY_6": "Sheets 13 (full audit trail), 15 (USR-008 role rights), 16 (TS-029)",
+    "__EMPTY_8": "INT-013 — Audit trail immutability (append-only, no edit/delete)\r\nTS-029 — Auditor login → all write actions BLOCKED; attempts logged\r\nVerify AI_AUDIT_LOG also immutable for AI override events"
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "INTEGRATION TESTER\r\n(All Teams)",
+    "__EMPTY_1": "All Teams",
+    "__EMPTY_3": "Executes Sheet 16 end-to-end scenarios (30 scenarios, 17 Critical for release). Cross-module workflows spanning Member → Loan → GL → MC → NPA → Audit. Coordinates UAT with business users.",
+    "__EMPTY_6": "Sheet 16 (TS-001 to TS-030 — all 30 scenarios)",
+    "__EMPTY_8": "All Critical tests (17 required for release go-live)\r\nKey integration scenarios:\r\nTS-019 — NPA Day-90 end-to-end (system auto-classifies, provisions, stops interest)\r\nTS-020 — Penal/Loan separation enforced at platform level\r\nTS-022 — Day-end accrual across all 6 products\r\nTS-023 — Atomic GL rollback — no partial postings"
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "SECTION B — MAKER-CHECKER ROLE PLAY: WHO PLAYS MAKER vs CHECKER"
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "Test Scenario",
+    "__EMPTY_2": "MAKER Action (plays USR-001 Arjun Mehta)",
+    "__EMPTY_6": "CHECKER Action (plays USR-002 Priya Nair)"
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "TS-001: SB account opening",
+    "__EMPTY_2": "Enters SB account details for MEM-001, submits for Checker approval",
+    "__EMPTY_6": "Reviews KYC status, verifies documents, approves with reason code. GL: Dr Cash · Cr SB A/c."
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "TS-002: SLA breach escalation",
+    "__EMPTY_2": "Submits SCH-LN-006 scheme, does NOT action within 4 hours",
+    "__EMPTY_6": "Fails to approve within SLA → system auto-escalates P1 to President. Dashboard shows breach flag."
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "TS-003: Same-user block",
+    "__EMPTY_2": "USR-001 (Arjun) submits item, then attempts to approve own submission",
+    "__EMPTY_6": "N/A — system REJECTS before Checker even sees the item. Error: 'Maker and Checker must be different users'."
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "TS-010: Cash withdrawal >= 50K",
+    "__EMPTY_2": "Enters TXN-002: Ramesh Patil, SB-2024-0042, withdrawal 75,000, cash",
+    "__EMPTY_6": "Signature verification panel appears (non-dismissible). Verifies specimen on file, approves/rejects."
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "TS-011: Signature REJECTED block",
+    "__EMPTY_2": "Enters TXN-011: MEM-010 (Arun Patil, signature status REJECTED), cash withdrawal",
+    "__EMPTY_6": "System BLOCKS before MC workflow starts — no approval buttons appear. Alert to Society Admin."
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "TS-012: RTGS enforcement",
+    "__EMPTY_2": "Enters TXN-007: Vikram Rao, 2,00,000 NEFT transfer",
+    "__EMPTY_6": "System shows RTGS warning. NEFT mode greyed out. Checker confirms RTGS selected, approves."
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "TS-013: NEFT GL entries",
+    "__EMPTY_2": "Enters TXN-006: Ramesh Patil, 1,20,000 NEFT to external beneficiary",
+    "__EMPTY_6": "Approves. GL: Dr SB-2024-0001 ₹1,20,000 · Cr NEFT Clearing A/c. Batch queued for settlement."
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "TS-023: Atomic rollback on failure",
+    "__EMPTY_2": "Initiates disbursement for LN-PENDING-01. Test team simulates Reminder Engine failure mid-transaction.",
+    "__EMPTY_6": "Verifies GL entries roll back completely. No partial posting. Checker shown error message. Transaction aborted."
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "TS-024: MIS TDS atomic deduction",
+    "__EMPTY_2": "Enters MIS-2024-0002 monthly payout for MEM-003 Anita Sharma (annual int 52,500 > 40,000)",
+    "__EMPTY_6": "Approves. TDS ₹437.50 deducted atomically in same transaction. Dr Accrued Int · Cr Member SB (net) + Cr TDS Payable."
+  },
+  {
+    "TESTING ROLES & RESPONSIBILITIES — SAHAYOG AI (v2.0)": "TS-025: Photo upload MC",
+    "__EMPTY_2": "USR-006 Secretary (Priya Deshpande) uploads photo for MEM-014, submits",
+    "__EMPTY_6": "USR-005 Society Admin (Sunita Agarwal) — NOT Secretary — approves. Secretary cannot approve own upload."
+  }
+]

@@ -1,0 +1,164 @@
+[
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": "Month",
+    "__EMPTY": "Opening Balance (₹)",
+    "__EMPTY_1": "EMI (₹)",
+    "__EMPTY_2": "Interest (₹)",
+    "__EMPTY_3": "Principal (₹)",
+    "__EMPTY_4": "Closing Balance (₹)",
+    "__EMPTY_5": "Cumul. Int Paid (₹)"
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 1,
+    "__EMPTY": 300000,
+    "__EMPTY_1": 10181,
+    "__EMPTY_2": 3375,
+    "__EMPTY_3": 6806,
+    "__EMPTY_4": 293194,
+    "__EMPTY_5": 3375
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 2,
+    "__EMPTY": 293194,
+    "__EMPTY_1": 10181,
+    "__EMPTY_2": 3298,
+    "__EMPTY_3": 6883,
+    "__EMPTY_4": 286311,
+    "__EMPTY_5": 6673
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 3,
+    "__EMPTY": 286311,
+    "__EMPTY_1": 10181,
+    "__EMPTY_2": 3221,
+    "__EMPTY_3": 6960,
+    "__EMPTY_4": 279351,
+    "__EMPTY_5": 9894
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 4,
+    "__EMPTY": 279351,
+    "__EMPTY_1": 10181,
+    "__EMPTY_2": 3143,
+    "__EMPTY_3": 7038,
+    "__EMPTY_4": 272313,
+    "__EMPTY_5": 13037
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 5,
+    "__EMPTY": 272313,
+    "__EMPTY_1": 10181,
+    "__EMPTY_2": 3064,
+    "__EMPTY_3": 7117,
+    "__EMPTY_4": 265196,
+    "__EMPTY_5": 16101
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 6,
+    "__EMPTY": 265196,
+    "__EMPTY_1": 10181,
+    "__EMPTY_2": 2983,
+    "__EMPTY_3": 7198,
+    "__EMPTY_4": 257998,
+    "__EMPTY_5": 19084
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 7,
+    "__EMPTY": 257998,
+    "__EMPTY_1": 10181,
+    "__EMPTY_2": 2902,
+    "__EMPTY_3": 7279,
+    "__EMPTY_4": 250719,
+    "__EMPTY_5": 21986
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": "...",
+    "__EMPTY": "...",
+    "__EMPTY_1": "...",
+    "__EMPTY_2": "...",
+    "__EMPTY_3": "...",
+    "__EMPTY_4": "...",
+    "__EMPTY_5": "..."
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 36,
+    "__EMPTY": "~₹12,000",
+    "__EMPTY_1": 10181,
+    "__EMPTY_2": "~₹135",
+    "__EMPTY_3": "~₹10,035",
+    "__EMPTY_4": 0,
+    "__EMPTY_5": "~₹66,103"
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": "Rounding mode: HALF_EVEN (banker's rounding). Final EMI adjusted to absorb cumulative rounding residual → closing balance = exactly ₹0. Total interest = ₹66,103."
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": "Loan LN-2024-0013 — ₹1,00,000 | 12 months | 11.00% p.a. | Flat Rate"
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": "Month",
+    "__EMPTY": "Opening Balance (₹)",
+    "__EMPTY_1": "EMI (₹)",
+    "__EMPTY_2": "Interest (₹)",
+    "__EMPTY_3": "Principal (₹)",
+    "__EMPTY_4": "Closing Balance (₹)",
+    "__EMPTY_5": "Note"
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 1,
+    "__EMPTY": 100000,
+    "__EMPTY_1": 9250,
+    "__EMPTY_2": 917,
+    "__EMPTY_3": 8333,
+    "__EMPTY_4": 91667,
+    "__EMPTY_5": "Flat: equal interest every month"
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 2,
+    "__EMPTY": 91667,
+    "__EMPTY_1": 9250,
+    "__EMPTY_2": 917,
+    "__EMPTY_3": 8333,
+    "__EMPTY_4": 83334,
+    "__EMPTY_5": "Flat: equal interest every month"
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 3,
+    "__EMPTY": 83334,
+    "__EMPTY_1": 9250,
+    "__EMPTY_2": 917,
+    "__EMPTY_3": 8333,
+    "__EMPTY_4": 75001,
+    "__EMPTY_5": "Flat: equal interest every month"
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 4,
+    "__EMPTY": 75001,
+    "__EMPTY_1": 9250,
+    "__EMPTY_2": 917,
+    "__EMPTY_3": 8333,
+    "__EMPTY_4": 66668,
+    "__EMPTY_5": "Flat: equal interest every month"
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 5,
+    "__EMPTY": 66668,
+    "__EMPTY_1": 9250,
+    "__EMPTY_2": 917,
+    "__EMPTY_3": 8333,
+    "__EMPTY_4": 58335,
+    "__EMPTY_5": "Flat: equal interest every month"
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": 6,
+    "__EMPTY": 58335,
+    "__EMPTY_1": 9250,
+    "__EMPTY_2": 917,
+    "__EMPTY_3": 8333,
+    "__EMPTY_4": 50002,
+    "__EMPTY_5": "Flat: equal interest every month"
+  },
+  {
+    "Loan LN-2026-0031 — ₹3,00,000 | 36 months | 13.50% p.a. | Reducing Balance": "FLAT RATE: Interest is same every month (P × R × T ÷ N). Principal portion also fixed. Compare with reducing balance above — flat rate total interest is HIGHER. Gold loan uses flat rate."
+  }
+]

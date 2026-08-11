@@ -117,7 +117,7 @@ export default function AccountsPage() {
         </div>
         {canCreateAccount && (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => router.push('/dashboard/accounts/open')}>
+            <Button variant="outline" onClick={() => router.push('/dashboard/accounts/new')}>
               <Plus className="w-4 h-4 mr-2" />
               Open Account
             </Button>
@@ -204,7 +204,7 @@ export default function AccountsPage() {
                         <TableCell className="font-medium">{account.accountNumber}</TableCell>
                         <TableCell>{account.member ? `${account.member.firstName} ${account.member.lastName}` : `Member-${account.memberId}`}</TableCell>
                         <TableCell className="font-semibold">
-                          ₹{(account.currentBalance / 1000).toFixed(0)}K
+                          ₹{account.currentBalance.toLocaleString()}
                         </TableCell>
                         <TableCell>{account.interestRate}% p.a.</TableCell>
                         <TableCell className="text-green-600">
@@ -271,14 +271,14 @@ export default function AccountsPage() {
                       <TableRow key={deposit.id}>
                         <TableCell className="font-medium">{deposit.depositId}</TableCell>
                         <TableCell>Member-{deposit.memberId}</TableCell>
-                        <TableCell>₹{(deposit.principalAmount / 100000).toFixed(1)}L</TableCell>
+                        <TableCell>₹{deposit.principalAmount.toLocaleString()}</TableCell>
                         <TableCell>{deposit.interestRate}% p.a.</TableCell>
                         <TableCell>{deposit.maturityDate.toLocaleDateString()}</TableCell>
                         <TableCell className="text-green-600">
-                          ₹{(deposit.totalInterest / 1000).toFixed(0)}K
+                          ₹{deposit.totalInterest.toLocaleString()}
                         </TableCell>
                         <TableCell className="font-semibold">
-                          ₹{(deposit.maturityAmount / 100000).toFixed(1)}L
+                          ₹{deposit.maturityAmount.toLocaleString()}
                         </TableCell>
                         <TableCell>
                           <Link href={`/dashboard/accounts/deposit/${deposit.id}`}>
