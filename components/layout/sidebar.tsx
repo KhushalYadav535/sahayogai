@@ -383,10 +383,7 @@ export function Sidebar() {
           {/* Logo */}
           <div className="p-4 border-b border-sidebar-border/60 flex-shrink-0">
             <Link href={user?.role === UserRole.PLATFORM_ADMIN ? '/admin/tenants' : '/dashboard'} className="flex items-center gap-3 font-bold text-lg group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-[0_4px_14px_rgba(59,130,246,0.3)] group-hover:shadow-[0_6px_20px_rgba(59,130,246,0.45)] transition-all duration-300">
-                <span className="text-white font-bold text-sm">SA</span>
-              </div>
-              <span className="text-sidebar-foreground tracking-tight">Sahayog <span className="text-primary font-bold">AI</span></span>
+              <img src="/4.png" alt="Sahayog AI" className="h-10 w-auto object-contain drop-shadow-sm" />
             </Link>
           </div>
 

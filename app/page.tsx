@@ -73,15 +73,11 @@ export default function LandingPage() {
       >
         <Link href="/" className="flex items-center gap-3 group cursor-pointer">
           <motion.div
-            whileHover={{ scale: 1.08, rotate: 3 }}
+            whileHover={{ scale: 1.05 }}
             transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-            className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-[0_4px_14px_0_rgba(59,130,246,0.35)]"
           >
-            <span className="text-white font-bold text-lg tracking-tight">SA</span>
+            <img src="/4.png" alt="Sahayog AI" className="h-10 w-auto object-contain drop-shadow-md" />
           </motion.div>
-          <span className="font-bold text-2xl tracking-tight">Sahayog{' '}
-            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent font-extrabold">AI</span>
-          </span>
         </Link>
 
         <div className="flex items-center gap-3">
@@ -569,12 +565,7 @@ export default function LandingPage() {
       <footer className="border-t border-border/40 py-12 px-6 bg-card/50 relative z-10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <Link href="/" className="flex items-center gap-2 opacity-80 hover:opacity-100 transition-opacity">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-              <span className="text-white font-bold text-xs">SA</span>
-            </div>
-            <span className="font-bold text-lg tracking-tight">
-              Sahayog <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">AI</span>
-            </span>
+            <img src="/4.png" alt="Sahayog AI" className="h-8 w-auto object-contain" />
           </Link>
           <p className="text-muted-foreground font-medium text-sm">© {new Date().getFullYear()} Sentient Digital. All rights reserved.</p>
           <div className="flex gap-6 text-sm font-medium text-muted-foreground">

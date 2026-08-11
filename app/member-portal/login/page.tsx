@@ -105,9 +105,9 @@ function MemberLoginContent() {
           transition={{ delay: 0.1, duration: 0.5 }}
           className="text-center"
         >
-          <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl animate-pulse-glow relative">
-            <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-secondary animate-float" />
-            <span className="text-2xl font-bold text-primary-foreground tracking-tight">SA</span>
+          <div className="flex items-center justify-center mx-auto mb-4 relative">
+            <Sparkles className="absolute -top-2 -right-6 w-6 h-6 text-primary animate-float z-10" />
+            <img src="/4.png" alt="Sahayog AI" className="h-24 w-auto object-contain drop-shadow-xl" />
           </div>
           <h1 className="text-3xl font-bold text-gradient-primary">{t.title}</h1>
           <p className="text-sm text-muted-foreground mt-2 font-medium">{t.subtitle}</p>

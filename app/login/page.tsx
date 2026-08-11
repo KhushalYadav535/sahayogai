@@ -65,9 +65,7 @@ export default function LoginPage() {
 
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-16 text-white">
           <div className="mb-8">
-            <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center mb-6 border border-white/20">
-              <span className="text-white font-bold text-lg">SA</span>
-            </div>
+            <img src="/4.png" alt="Sahayog AI" className="h-16 w-auto object-contain mb-6 drop-shadow-md" />
             <h1 className="text-4xl xl:text-5xl font-bold tracking-tight mb-4">
               Welcome to<br />Sahayog AI
             </h1>
@@ -101,11 +99,8 @@ export default function LoginPage() {
         <div className="w-full max-w-md animate-slide-up">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center mb-8">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-lg">SA</span>
-              </div>
-              <span className="font-bold text-2xl tracking-tight text-foreground">Sahayog <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">AI</span></span>
+            <div className="flex items-center justify-center">
+              <img src="/4.png" alt="Sahayog AI" className="h-12 w-auto object-contain drop-shadow-sm" />
             </div>
           </div>
 

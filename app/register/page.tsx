@@ -64,10 +64,8 @@ export default function RegisterPage() {
 
             <Card className="w-full max-w-md relative z-10 border-border/50 shadow-xl backdrop-blur-sm bg-card/95">
                 <CardHeader className="space-y-2 text-center pb-6 border-b border-border/20">
-                    <div className="flex items-center justify-center mb-2">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-inner">
-                            <span className="text-primary-foreground font-bold text-xl tracking-tight">SA</span>
-                        </div>
+                    <div className="flex items-center justify-center mb-4">
+                        <img src="/4.png" alt="Sahayog AI" className="h-16 w-auto object-contain drop-shadow-sm" />
                     </div>
                     <CardTitle className="text-2xl font-bold tracking-tight">Register Society</CardTitle>
                     <CardDescription className="text-sm">Create a new cooperative workspace</CardDescription>
