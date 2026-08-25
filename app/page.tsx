@@ -567,7 +567,7 @@ export default function LandingPage() {
           <Link href="/" className="flex items-center gap-2 opacity-80 hover:opacity-100 transition-opacity">
             <img src="/4.png" alt="Sahayog AI" className="h-8 w-auto object-contain" />
           </Link>
-          <p className="text-muted-foreground font-medium text-sm">© {new Date().getFullYear()} Sentient Digital. All rights reserved.</p>
+          <p className="text-muted-foreground font-medium text-sm">© {new Date().getFullYear()} Datatrack. All rights reserved.</p>
           <div className="flex gap-6 text-sm font-medium text-muted-foreground">
             <Link href="#" className="hover:text-foreground transition-colors">Privacy</Link>
             <Link href="#" className="hover:text-foreground transition-colors">Terms</Link>
